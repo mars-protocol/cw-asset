@@ -128,6 +128,18 @@ let msg = token.transfer_from_msg("alice", "bob")?;
 let res = Response::new().add_message(msg);
 ```
 
+### Stringify
+
+The [`std::fmt::Display`](https://doc.rust-lang.org/std/fmt/trait.Display.html) trait is implemented for `AssetInfo` and `Asset`, so you can easily invoke `to_string` method to generate a string representation of the asset. This may be useful when creating logging outputs:
+
+```rust
+let res = Response::new()
+    .add_message(token.transfer_msg("alice")?)
+    .add_attribute("asset_sent", token.to_string());
+```
+
+The string representation of the asset is `label:amount` where `label` is the denom for native coins, or the contract address for CW20 tokens.
+
 ## License
 
 Contents of this repository are open source under [GNU General Public License v3](https://www.gnu.org/licenses/gpl-3.0.en.html) or later versions.

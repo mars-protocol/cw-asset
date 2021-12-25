@@ -1,3 +1,5 @@
+use std::fmt;
+
 use cosmwasm_std::{
     to_binary, Addr, Api, BalanceResponse, BankMsg, BankQuery, Coin, CosmosMsg, QuerierWrapper,
     QueryRequest, StdError, StdResult, Uint128, WasmMsg, WasmQuery,
@@ -17,12 +19,24 @@ static DECIMAL_FRACTION: Uint128 = Uint128::new(1_000_000_000_000_000_000u128);
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
-pub enum AssetInfoBase<T> {
+pub enum AssetInfoBase<T>
+where
+    T: fmt::Display,
+{
     Cw20(T),        // the contract address, String or cosmwasm_std::Addr
     Native(String), // the native token's denom
 }
 
-impl<T> AssetInfoBase<T> {
+impl<T: fmt::Display> fmt::Display for AssetInfoBase<T> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            AssetInfoBase::Cw20(contract_addr) => write!(f, "{}", contract_addr),
+            AssetInfoBase::Native(denom) => write!(f, "{}", denom),
+        }
+    }
+}
+
+impl<T: fmt::Display> AssetInfoBase<T> {
     /// Create a new `AssetInfoBase` instance representing a CW20 token of given contract address
     pub fn cw20<A: Into<T>>(contract_addr: A) -> Self {
         Self::Cw20(contract_addr.into())
@@ -93,12 +107,21 @@ impl AssetInfo {
 //--------------------------------------------------------------------------------------------------
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
-pub struct AssetBase<T> {
+pub struct AssetBase<T>
+where
+    T: fmt::Display,
+{
     pub info: AssetInfoBase<T>,
     pub amount: Uint128,
 }
 
-impl<T> AssetBase<T> {
+impl<T: fmt::Display> fmt::Display for AssetBase<T> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}:{}", self.info, self.amount)
+    }
+}
+
+impl<T: fmt::Display> AssetBase<T> {
     /// Create a new `AssetBase` instance based on given asset info and amount
     pub fn new<B: Into<Uint128>>(info: AssetInfoBase<T>, amount: B) -> Self {
         Self {
@@ -328,6 +351,21 @@ mod tests {
                 amount: Uint128::new(123456)
             }
         )
+    }
+
+    #[test]
+    fn displaying() {
+        let info = AssetInfo::native("uusd");
+        assert_eq!(info.to_string(), String::from("uusd"));
+
+        let asset = Asset::new(info, 69420 as u128);
+        assert_eq!(asset.to_string(), String::from("uusd:69420"));
+
+        let info = AssetInfo::cw20(Addr::unchecked("mock_token"));
+        assert_eq!(info.to_string(), String::from("mock_token"));
+
+        let asset = Asset::new(info, 88888 as u128);
+        assert_eq!(asset.to_string(), String::from("mock_token:88888"));
     }
 
     #[test]
