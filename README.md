@@ -18,17 +18,17 @@ use terra_asset::{AssetInfo, Asset};
 // native coin
 let coin_info = AssetInfo::native("uusd");
 
-let coin = Asset::new(&coin_info, 69420);
+let coin = Asset::new(coin_info, 69420 as u128);
 // or
-let coin = Asset::native("uusd", 69420);
+let coin = Asset::native("uusd", 69420 as u128);
 
 // CW20 token
-let token_addr = deps.api.addr_validate("token_contract_address")?;
-let token_info = AssetInfo::cw20(&token_addr);
+let token_addr = deps.api.addr_validate("mock_token")?;
+let token_info = AssetInfo::cw20(token_addr.clone());
 
-let token = Asset::new(&token_info, 12345);
+let token = Asset::new(token_info, 12345 as u128);
 // or
-let token = Asset::cw20(&token_addr, 12345);
+let token = Asset::cw20(token_addr, 12345 as u128);
 ```
 
 ### Checked and unchecked types
@@ -44,7 +44,7 @@ use cw_storage_plus::Item;
 
 const TOKEN_INFO: Item<AssetInfo> = Item::new("token_info");
 
-let token_info = AssetInfo::cw20(&token_addr);
+let token_info = AssetInfo::cw20(token_addr);
 TOKEN_INFO.save(deps.storage, &token_info)?;
 ```
 
@@ -70,7 +70,7 @@ let token_info = token_info_unchecked.check(deps.api)?;
 
 ### Tax handling
 
-Stability fee (a.k.a. "tax") is a fees charged on Terra stablecoin transfers and considered by many developers to be a pain in the arse to work with, just as the real world tax.
+Stability fee (a.k.a. "tax") is a fees charged on Terra stablecoin transfers and considered by many developers to be tricky to work with.
 
 Tax works as follows. Suppose Alice sends Bob 100 UST when the tax rate is 0.1%. The tax amount is 100 \* 0.1% = 0.1 UST. After the transfer is executed, Bob's balance increases by 100 UST, while Alice's balance is deducted by 100.1 UST.
 
@@ -85,7 +85,7 @@ The `Asset` type implements two helper functions for handling taxes:
 Calculates the deliverable amount (tax deducted) when sending an asset:
 
 ```rust
-let coin = Asset::native("uusd", 100000000);
+let coin = Asset::native("uusd", 100000000 as u128);
 let coin_after_tax = coin.deduct_tax(&deps.querier)?;
 // at 0.1% tax rate, `coin_after_tax.amount` should be 99900099
 ```
@@ -95,7 +95,7 @@ let coin_after_tax = coin.deduct_tax(&deps.querier)?;
 Calculates the total cost (including tax) for sending an asset:
 
 ```rust
-let coin = Asset::native("uusd", 99900099);
+let coin = Asset::native("uusd", 99900099 as u128);
 let coin_with_tax = coin.add_tax(&deps.querier)?;
 // at 0.1% tax rate, `coin_with_tax.amount` should be 99999999
 ```
@@ -109,7 +109,7 @@ The `Asset` type also comes with helper functions for generating messages:
 The following example creates a message for transferring 100 UST to Bob. Note that we first deduct tax before generating the message:
 
 ```rust
-let coin = Asset::native("uusd", 100000000);
+let coin = Asset::native("uusd", 100000000 as u128);
 let msg = coin.deduct_tax(&deps.querier)?.transfer_msg("bob_address")?;
 let res = Response::new().add_message(msg);
 ```
@@ -123,7 +123,7 @@ The following example creates a message that draws 100 MIR tokens from Alice's w
 - Invoking `transfer_from_msg` on an native coin will result in error, as native coins don't have the `TransferFrom` method
 
 ```rust
-let token = Asset::cw20("mirror_token", 100000000);
+let token = Asset::cw20(deps.api.addr_validate("mock_token")?, 100000000 as u128);
 let msg = token.transfer_from_msg("alice", "bob")?;
 let res = Response::new().add_message(msg);
 ```
