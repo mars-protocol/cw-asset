@@ -57,7 +57,7 @@ impl Cw20Querier {
         let contract_addr = Addr::unchecked(contract);
         let user_addr = Addr::unchecked(user);
 
-        let contract_balances = self.balances.entry(contract_addr).or_insert(HashMap::new());
+        let contract_balances = self.balances.entry(contract_addr).or_insert_with(HashMap::new);
         contract_balances.insert(user_addr, Uint128::new(balance));
     }
 }
