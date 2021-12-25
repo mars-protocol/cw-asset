@@ -281,3 +281,162 @@ impl Asset {
         })
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::testing::mock_dependencies;
+    use cosmwasm_std::Decimal;
+
+    #[test]
+    fn creating_instances() {
+        let info = AssetInfoUnchecked::cw20("mock_token");
+        assert_eq!(info, AssetInfoUnchecked::Cw20(String::from("mock_token")));
+
+        let info = AssetInfoUnchecked::native("uusd");
+        assert_eq!(info, AssetInfoUnchecked::Native(String::from("uusd")));
+
+        let info = AssetInfo::cw20(Addr::unchecked("mock_token"));
+        assert_eq!(info, AssetInfo::Cw20(Addr::unchecked("mock_token")));
+
+        let info = AssetInfo::native("uusd");
+        assert_eq!(info, AssetInfo::Native(String::from("uusd")));
+
+        let asset = Asset::new(info, 123456 as u128);
+        assert_eq!(
+            asset,
+            Asset {
+                info: AssetInfo::Native(String::from("uusd")),
+                amount: Uint128::new(123456)
+            }
+        );
+
+        let asset = Asset::cw20(Addr::unchecked("mock_token"), 123456 as u128);
+        assert_eq!(
+            asset,
+            Asset {
+                info: AssetInfo::Cw20(Addr::unchecked("mock_token")),
+                amount: Uint128::new(123456)
+            }
+        );
+
+        let asset = Asset::native("uusd", 123456 as u128);
+        assert_eq!(
+            asset,
+            Asset {
+                info: AssetInfo::Native(String::from("uusd")),
+                amount: Uint128::new(123456)
+            }
+        )
+    }
+
+    #[test]
+    fn casting_instances() {
+        let deps = mock_dependencies();
+
+        let info_unchecked = AssetInfoUnchecked::cw20("mock_token");
+        let info_checked = AssetInfo::cw20(Addr::unchecked("mock_token"));
+
+        assert_eq!(info_unchecked.check(deps.as_ref().api).unwrap(), info_checked);
+        assert_eq!(AssetInfoUnchecked::from(info_checked.clone()), info_unchecked);
+
+        let asset_unchecked = AssetUnchecked::new(info_unchecked, 123456 as u128);
+        let asset_checked = Asset::new(info_checked, 123456 as u128);
+
+        assert_eq!(asset_unchecked.check(deps.as_ref().api).unwrap(), asset_checked);
+        assert_eq!(AssetUnchecked::from(asset_checked), asset_unchecked);
+    }
+
+    #[test]
+    fn querying_balance() {
+        let mut deps = mock_dependencies();
+        deps.querier.set_base_balances("alice", &[Coin::new(69420, "uusd")]);
+        deps.querier.set_cw20_balance("mock_token", "bob", 88888);
+
+        let coin = AssetInfo::native("uusd");
+        let balance = coin.query_balance(&deps.as_ref().querier, "alice").unwrap();
+        assert_eq!(balance, Uint128::new(69420));
+
+        let token = AssetInfo::cw20(Addr::unchecked("mock_token"));
+        let balance = token.query_balance(&deps.as_ref().querier, "bob").unwrap();
+        assert_eq!(balance, Uint128::new(88888));
+    }
+
+    #[test]
+    fn creating_messages() {
+        let asset = Asset::cw20(Addr::unchecked("mock_token"), 123456 as u128);
+        let coin = Asset::native("uusd", 123456 as u128);
+
+        let msg = asset.transfer_msg("alice").unwrap();
+        assert_eq!(
+            msg,
+            CosmosMsg::Wasm(WasmMsg::Execute {
+                contract_addr: String::from("mock_token"),
+                msg: to_binary(&Cw20ExecuteMsg::Transfer {
+                    recipient: String::from("alice"),
+                    amount: Uint128::new(123456)
+                })
+                .unwrap(),
+                funds: vec![]
+            })
+        );
+
+        let msg = coin.transfer_msg("alice").unwrap();
+        assert_eq!(
+            msg,
+            CosmosMsg::Bank(BankMsg::Send {
+                to_address: String::from("alice"),
+                amount: vec![Coin::new(123456, "uusd")]
+            })
+        );
+
+        let msg = asset.transfer_from_msg("bob", "charlie").unwrap();
+        assert_eq!(
+            msg,
+            CosmosMsg::Wasm(WasmMsg::Execute {
+                contract_addr: String::from("mock_token"),
+                msg: to_binary(&Cw20ExecuteMsg::TransferFrom {
+                    owner: String::from("bob"),
+                    recipient: String::from("charlie"),
+                    amount: Uint128::new(123456)
+                })
+                .unwrap(),
+                funds: vec![]
+            })
+        );
+
+        let err = coin.transfer_from_msg("bob", "charlie");
+        assert_eq!(
+            err,
+            Err(StdError::generic_err("native coins do not have `transfer_from` method"))
+        );
+    }
+
+    #[test]
+    fn handling_taxes() {
+        let mut deps = mock_dependencies();
+        deps.querier.set_native_tax_rate(Decimal::from_ratio(1 as u128, 1000 as u128)); // 0.1%
+        deps.querier.set_native_tax_cap("uusd", 1000000);
+
+        // a relatively small amount that does not hit tax cap
+        let coin = Asset::native("uusd", 1234567 as u128);
+        let total_amount = coin.add_tax(&deps.as_ref().querier).unwrap().amount;
+        let deliverable_amount = coin.deduct_tax(&deps.as_ref().querier).unwrap().amount;
+        assert_eq!(total_amount, Uint128::new(1235801));
+        assert_eq!(deliverable_amount, Uint128::new(1233333));
+
+        // a bigger amount that hits tax cap
+        let coin = Asset::native("uusd", 2000000000 as u128);
+        let total_amount = coin.add_tax(&deps.as_ref().querier).unwrap().amount;
+        let deliverable_amount = coin.deduct_tax(&deps.as_ref().querier).unwrap().amount;
+        assert_eq!(total_amount, Uint128::new(2001000000));
+        assert_eq!(deliverable_amount, Uint128::new(1999000000));
+
+        // CW20 tokens don't have the tax issue
+        let coin = Asset::cw20(Addr::unchecked("mock_token"), 1234567 as u128);
+        let total_amount = coin.add_tax(&deps.as_ref().querier).unwrap().amount;
+        let deliverable_amount = coin.deduct_tax(&deps.as_ref().querier).unwrap().amount;
+        assert_eq!(total_amount, Uint128::new(1234567));
+        assert_eq!(deliverable_amount, Uint128::new(1234567));
+    }
+}

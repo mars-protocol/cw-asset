@@ -6,6 +6,9 @@ edition = "2018"
 license = "GPLv3-or-later"
 repository = "https://github.com/larry0x/terra-asset"
 
+[lib]
+doctest = false # do not run doc tests
+
 [dependencies]
 cosmwasm-std = "0.16.0"
 cw20 = "0.9.1"
