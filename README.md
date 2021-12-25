@@ -142,4 +142,4 @@ The string representation of the asset is `label:amount` where `label` is the de
 
 ## License
 
-Contents of this repository are open source under [GNU General Public License v3](https://www.gnu.org/licenses/gpl-3.0.en.html) or later versions.
+Contents of this repository are open source under [MIT License](./LICENSE).

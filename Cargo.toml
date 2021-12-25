@@ -4,7 +4,7 @@ description = "Helper library for interacting with Terra assets (SDK coins and C
 version = "0.1.0"
 authors = ["larry <larry@delphidigital.io>"]
 edition = "2018"
-license = "GPLv3-or-later"
+license = "MIT"
 repository = "https://github.com/larry0x/terra-asset"
 
 [lib]
