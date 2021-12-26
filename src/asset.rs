@@ -358,6 +358,33 @@ mod tests {
     }
 
     #[test]
+    fn comparing() {
+        let uluna = AssetInfo::native("uluna");
+        let uusd = AssetInfo::native("uusd");
+
+        let astro = AssetInfo::cw20(Addr::unchecked("astro_token"));
+        let mars = AssetInfo::cw20(Addr::unchecked("mars_token"));
+
+        assert_eq!(uluna == uusd, false);
+        assert_eq!(uluna == astro, false);
+        assert_eq!(astro == mars, false);
+
+        assert_eq!(uluna == uluna.clone(), true);
+        assert_eq!(astro == astro.clone(), true);
+
+        let uluna1 = Asset::new(uluna.clone(), 69 as u128);
+        let uluna2 = Asset::new(uluna, 420 as u128);
+        let uusd1 = Asset::new(uusd, 69 as u128);
+
+        let astro1 = Asset::new(astro, 69 as u128);
+
+        assert_eq!(uluna1 == uluna2, false);
+        assert_eq!(uluna1 == uusd1, false);
+
+        assert_eq!(astro1 == astro1, true);
+    }
+
+    #[test]
     fn displaying() {
         let info = AssetInfo::native("uusd");
         assert_eq!(info.to_string(), String::from("uusd"));
