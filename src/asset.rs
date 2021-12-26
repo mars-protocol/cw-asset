@@ -1,110 +1,19 @@
 use std::fmt;
 
 use cosmwasm_std::{
-    to_binary, Addr, Api, BalanceResponse, BankMsg, BankQuery, Coin, CosmosMsg, QuerierWrapper,
-    QueryRequest, StdError, StdResult, Uint128, WasmMsg, WasmQuery,
+    to_binary, Addr, Api, BankMsg, Coin, CosmosMsg, QuerierWrapper, StdError, StdResult, Uint128,
+    WasmMsg,
 };
-use cw20::{BalanceResponse as Cw20BalanceResponse, Cw20ExecuteMsg, Cw20QueryMsg};
+use cw20::Cw20ExecuteMsg;
 
 use terra_cosmwasm::TerraQuerier;
 
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
+use super::asset_info::{AssetInfo, AssetInfoBase};
+
 static DECIMAL_FRACTION: Uint128 = Uint128::new(1_000_000_000_000_000_000u128);
-
-//--------------------------------------------------------------------------------------------------
-// AssetInfo
-//--------------------------------------------------------------------------------------------------
-
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
-#[serde(rename_all = "snake_case")]
-pub enum AssetInfoBase<T>
-where
-    T: fmt::Display,
-{
-    Cw20(T),        // the contract address, String or cosmwasm_std::Addr
-    Native(String), // the native token's denom
-}
-
-impl<T: fmt::Display> fmt::Display for AssetInfoBase<T> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            AssetInfoBase::Cw20(contract_addr) => write!(f, "{}", contract_addr),
-            AssetInfoBase::Native(denom) => write!(f, "{}", denom),
-        }
-    }
-}
-
-impl<T: fmt::Display> AssetInfoBase<T> {
-    /// Create a new `AssetInfoBase` instance representing a CW20 token of given contract address
-    pub fn cw20<A: Into<T>>(contract_addr: A) -> Self {
-        Self::Cw20(contract_addr.into())
-    }
-
-    /// Create a new `AssetInfoBase` instance representing a native token of given denom
-    pub fn native<A: Into<String>>(denom: A) -> Self {
-        Self::Native(denom.into())
-    }
-}
-
-pub type AssetInfoUnchecked = AssetInfoBase<String>;
-pub type AssetInfo = AssetInfoBase<Addr>;
-
-impl From<AssetInfo> for AssetInfoUnchecked {
-    fn from(asset_info: AssetInfo) -> Self {
-        match &asset_info {
-            AssetInfo::Cw20(contract_addr) => AssetInfoUnchecked::Cw20(contract_addr.into()),
-            AssetInfo::Native(denom) => AssetInfoUnchecked::Native(denom.clone()),
-        }
-    }
-}
-
-impl AssetInfoUnchecked {
-    /// Validate contract address (if any) and returns a new `AssetInfo` instance
-    pub fn check(&self, api: &dyn Api) -> StdResult<AssetInfo> {
-        Ok(match self {
-            AssetInfoUnchecked::Cw20(contract_addr) => {
-                AssetInfo::Cw20(api.addr_validate(contract_addr)?)
-            }
-            AssetInfoUnchecked::Native(denom) => AssetInfo::Native(denom.clone()),
-        })
-    }
-}
-
-impl AssetInfo {
-    /// Query an address' balance of the asset
-    pub fn query_balance<T: Into<String>>(
-        &self,
-        querier: &QuerierWrapper,
-        address: T,
-    ) -> StdResult<Uint128> {
-        match self {
-            AssetInfo::Cw20(contract_addr) => {
-                let response: Cw20BalanceResponse =
-                    querier.query(&QueryRequest::Wasm(WasmQuery::Smart {
-                        contract_addr: contract_addr.into(),
-                        msg: to_binary(&Cw20QueryMsg::Balance {
-                            address: address.into(),
-                        })?,
-                    }))?;
-                Ok(response.balance)
-            }
-            AssetInfo::Native(denom) => {
-                let response: BalanceResponse =
-                    querier.query(&QueryRequest::Bank(BankQuery::Balance {
-                        address: address.into(),
-                        denom: denom.clone(),
-                    }))?;
-                Ok(response.amount.amount)
-            }
-        }
-    }
-}
-
-//--------------------------------------------------------------------------------------------------
-// Asset
-//--------------------------------------------------------------------------------------------------
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct AssetBase<T>
@@ -317,18 +226,7 @@ mod tests {
 
     #[test]
     fn creating_instances() {
-        let info = AssetInfoUnchecked::cw20("mock_token");
-        assert_eq!(info, AssetInfoUnchecked::Cw20(String::from("mock_token")));
-
-        let info = AssetInfoUnchecked::native("uusd");
-        assert_eq!(info, AssetInfoUnchecked::Native(String::from("uusd")));
-
-        let info = AssetInfo::cw20(Addr::unchecked("mock_token"));
-        assert_eq!(info, AssetInfo::Cw20(Addr::unchecked("mock_token")));
-
-        let info = AssetInfo::native("uusd");
-        assert_eq!(info, AssetInfo::Native(String::from("uusd")));
-
+        let info = AssetInfo::Native(String::from("uusd"));
         let asset = Asset::new(info, 123456 as u128);
         assert_eq!(
             asset,
@@ -359,43 +257,22 @@ mod tests {
 
     #[test]
     fn comparing() {
-        let uluna = AssetInfo::native("uluna");
-        let uusd = AssetInfo::native("uusd");
-
-        let astro = AssetInfo::cw20(Addr::unchecked("astro_token"));
-        let mars = AssetInfo::cw20(Addr::unchecked("mars_token"));
-
-        assert_eq!(uluna == uusd, false);
-        assert_eq!(uluna == astro, false);
-        assert_eq!(astro == mars, false);
-
-        assert_eq!(uluna == uluna.clone(), true);
-        assert_eq!(astro == astro.clone(), true);
-
-        let uluna1 = Asset::new(uluna.clone(), 69 as u128);
-        let uluna2 = Asset::new(uluna, 420 as u128);
-        let uusd1 = Asset::new(uusd, 69 as u128);
-
-        let astro1 = Asset::new(astro, 69 as u128);
+        let uluna1 = Asset::native("uluna", 69 as u128);
+        let uluna2 = Asset::native("uluna", 420 as u128);
+        let uusd = Asset::native("uusd", 69 as u128);
+        let astro = Asset::cw20(Addr::unchecked("astro_token"), 69 as u128);
 
         assert_eq!(uluna1 == uluna2, false);
-        assert_eq!(uluna1 == uusd1, false);
-
-        assert_eq!(astro1 == astro1, true);
+        assert_eq!(uluna1 == uusd, false);
+        assert_eq!(astro == astro.clone(), true);
     }
 
     #[test]
     fn displaying() {
-        let info = AssetInfo::native("uusd");
-        assert_eq!(info.to_string(), String::from("uusd"));
-
-        let asset = Asset::new(info, 69420 as u128);
+        let asset = Asset::native("uusd", 69420 as u128);
         assert_eq!(asset.to_string(), String::from("uusd:69420"));
 
-        let info = AssetInfo::cw20(Addr::unchecked("mock_token"));
-        assert_eq!(info.to_string(), String::from("mock_token"));
-
-        let asset = Asset::new(info, 88888 as u128);
+        let asset = Asset::cw20(Addr::unchecked("mock_token"), 88888 as u128);
         assert_eq!(asset.to_string(), String::from("mock_token:88888"));
     }
 
@@ -403,17 +280,11 @@ mod tests {
     fn casting_instances() {
         let deps = mock_dependencies();
 
-        let info_unchecked = AssetInfoUnchecked::cw20("mock_token");
-        let info_checked = AssetInfo::cw20(Addr::unchecked("mock_token"));
+        let unchecked = AssetUnchecked::cw20(String::from("mock_token"), 123456 as u128);
+        let checked = Asset::cw20(Addr::unchecked("mock_token"), 123456 as u128);
 
-        assert_eq!(info_unchecked.check(deps.as_ref().api).unwrap(), info_checked);
-        assert_eq!(AssetInfoUnchecked::from(info_checked.clone()), info_unchecked);
-
-        let asset_unchecked = AssetUnchecked::new(info_unchecked, 123456 as u128);
-        let asset_checked = Asset::new(info_checked, 123456 as u128);
-
-        assert_eq!(asset_unchecked.check(deps.as_ref().api).unwrap(), asset_checked);
-        assert_eq!(AssetUnchecked::from(asset_checked), asset_unchecked);
+        assert_eq!(unchecked.check(deps.as_ref().api).unwrap(), checked);
+        assert_eq!(AssetUnchecked::from(checked), unchecked);
     }
 
     #[test]
