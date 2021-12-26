@@ -16,44 +16,9 @@ use super::asset_info::{AssetInfo, AssetInfoBase};
 static DECIMAL_FRACTION: Uint128 = Uint128::new(1_000_000_000_000_000_000u128);
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
-pub struct AssetBase<T>
-where
-    T: fmt::Display,
-{
+pub struct AssetBase<T> {
     pub info: AssetInfoBase<T>,
     pub amount: Uint128,
-}
-
-impl<T: fmt::Display> fmt::Display for AssetBase<T> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}:{}", self.info, self.amount)
-    }
-}
-
-impl<T: fmt::Display> AssetBase<T> {
-    /// Create a new `AssetBase` instance based on given asset info and amount
-    pub fn new<B: Into<Uint128>>(info: AssetInfoBase<T>, amount: B) -> Self {
-        Self {
-            info,
-            amount: amount.into(),
-        }
-    }
-
-    /// Create a new `AssetBase` instance representing a CW20 token of given contract address and amount
-    pub fn cw20<A: Into<T>, B: Into<Uint128>>(contract_addr: A, amount: B) -> Self {
-        Self {
-            info: AssetInfoBase::cw20(contract_addr),
-            amount: amount.into(),
-        }
-    }
-
-    /// Create a new `AssetBase` instance representing a native coin of given denom
-    pub fn native<A: Into<String>, B: Into<Uint128>>(denom: A, amount: B) -> Self {
-        Self {
-            info: AssetInfoBase::native(denom),
-            amount: amount.into(),
-        }
-    }
 }
 
 pub type AssetUnchecked = AssetBase<String>;
@@ -78,7 +43,37 @@ impl AssetUnchecked {
     }
 }
 
+impl fmt::Display for Asset {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}:{}", self.info, self.amount)
+    }
+}
+
 impl Asset {
+    /// Create a new `AssetBase` instance based on given asset info and amount
+    pub fn new<B: Into<Uint128>>(info: AssetInfo, amount: B) -> Self {
+        Self {
+            info,
+            amount: amount.into(),
+        }
+    }
+
+    /// Create a new `AssetBase` instance representing a CW20 token of given contract address and amount
+    pub fn cw20<B: Into<Uint128>>(contract_addr: Addr, amount: B) -> Self {
+        Self {
+            info: AssetInfoBase::cw20(contract_addr),
+            amount: amount.into(),
+        }
+    }
+
+    /// Create a new `AssetBase` instance representing a native coin of given denom
+    pub fn native<A: Into<String>, B: Into<Uint128>>(denom: A, amount: B) -> Self {
+        Self {
+            info: AssetInfoBase::native(denom),
+            amount: amount.into(),
+        }
+    }
+
     /// Generate a message the sends the asset from the sender to account `to`
     ///
     /// NOTE: In general, it is neccessaryto first deduct tax before calling this method.
@@ -280,11 +275,10 @@ mod tests {
     fn casting_instances() {
         let deps = mock_dependencies();
 
-        let unchecked = AssetUnchecked::cw20(String::from("mock_token"), 123456 as u128);
         let checked = Asset::cw20(Addr::unchecked("mock_token"), 123456 as u128);
+        let unchecked: AssetUnchecked = checked.clone().into();
 
         assert_eq!(unchecked.check(deps.as_ref().api).unwrap(), checked);
-        assert_eq!(AssetUnchecked::from(checked), unchecked);
     }
 
     #[test]

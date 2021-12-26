@@ -11,33 +11,9 @@ use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
-pub enum AssetInfoBase<T>
-where
-    T: fmt::Display,
-{
+pub enum AssetInfoBase<T> {
     Cw20(T),        // the contract address, String or cosmwasm_std::Addr
     Native(String), // the native token's denom
-}
-
-impl<T: fmt::Display> fmt::Display for AssetInfoBase<T> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            AssetInfoBase::Cw20(contract_addr) => write!(f, "{}", contract_addr),
-            AssetInfoBase::Native(denom) => write!(f, "{}", denom),
-        }
-    }
-}
-
-impl<T: fmt::Display> AssetInfoBase<T> {
-    /// Create a new `AssetInfoBase` instance representing a CW20 token of given contract address
-    pub fn cw20<A: Into<T>>(contract_addr: A) -> Self {
-        Self::Cw20(contract_addr.into())
-    }
-
-    /// Create a new `AssetInfoBase` instance representing a native token of given denom
-    pub fn native<A: Into<String>>(denom: A) -> Self {
-        Self::Native(denom.into())
-    }
 }
 
 pub type AssetInfoUnchecked = AssetInfoBase<String>;
@@ -64,7 +40,26 @@ impl AssetInfoUnchecked {
     }
 }
 
+impl fmt::Display for AssetInfo {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            AssetInfo::Cw20(contract_addr) => write!(f, "{}", contract_addr),
+            AssetInfo::Native(denom) => write!(f, "{}", denom),
+        }
+    }
+}
+
 impl AssetInfo {
+    /// Create a new `AssetInfoBase` instance representing a CW20 token of given contract address
+    pub fn cw20<A: Into<Addr>>(contract_addr: A) -> Self {
+        AssetInfo::Cw20(contract_addr.into())
+    }
+
+    /// Create a new `AssetInfoBase` instance representing a native token of given denom
+    pub fn native<A: Into<String>>(denom: A) -> Self {
+        AssetInfo::Native(denom.into())
+    }
+
     /// Query an address' balance of the asset
     pub fn query_balance<T: Into<String>>(
         &self,
@@ -101,12 +96,6 @@ mod test {
 
     #[test]
     fn creating_instances() {
-        let info = AssetInfoUnchecked::cw20("mock_token");
-        assert_eq!(info, AssetInfoUnchecked::Cw20(String::from("mock_token")));
-
-        let info = AssetInfoUnchecked::native("uusd");
-        assert_eq!(info, AssetInfoUnchecked::Native(String::from("uusd")));
-
         let info = AssetInfo::cw20(Addr::unchecked("mock_token"));
         assert_eq!(info, AssetInfo::Cw20(Addr::unchecked("mock_token")));
 
@@ -138,13 +127,12 @@ mod test {
     }
 
     #[test]
-    fn casting() {
+    fn checking() {
         let deps = mock_dependencies();
 
-        let unchecked = AssetInfoUnchecked::cw20("mock_token");
         let checked = AssetInfo::cw20(Addr::unchecked("mock_token"));
+        let unchecked: AssetInfoUnchecked = checked.into();
 
         assert_eq!(unchecked.check(deps.as_ref().api).unwrap(), checked);
-        assert_eq!(AssetInfoUnchecked::from(checked.clone()), unchecked);
     }
 }
