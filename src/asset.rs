@@ -51,7 +51,7 @@ impl fmt::Display for Asset {
 
 impl Asset {
     /// Create a new `AssetBase` instance based on given asset info and amount
-    pub fn new<B: Into<Uint128>>(info: AssetInfo, amount: B) -> Self {
+    pub fn new(info: AssetInfo, amount: u128) -> Self {
         Self {
             info,
             amount: amount.into(),
@@ -59,7 +59,7 @@ impl Asset {
     }
 
     /// Create a new `AssetBase` instance representing a CW20 token of given contract address and amount
-    pub fn cw20<B: Into<Uint128>>(contract_addr: Addr, amount: B) -> Self {
+    pub fn cw20(contract_addr: Addr, amount: u128) -> Self {
         Self {
             info: AssetInfoBase::cw20(contract_addr),
             amount: amount.into(),
@@ -67,7 +67,7 @@ impl Asset {
     }
 
     /// Create a new `AssetBase` instance representing a native coin of given denom
-    pub fn native<A: Into<String>, B: Into<Uint128>>(denom: A, amount: B) -> Self {
+    pub fn native<A: Into<String>>(denom: A, amount: u128) -> Self {
         Self {
             info: AssetInfoBase::native(denom),
             amount: amount.into(),
@@ -86,7 +86,7 @@ impl Asset {
     /// let asset = Asset::native("uusd", 12345);
     /// let msg = Asset.deduct_tax(&deps.querier)?.transfer_msg("alice")?;
     /// ```
-    pub fn transfer_msg<T: Into<String>>(&self, to: T) -> StdResult<CosmosMsg> {
+    pub fn transfer_msg<A: Into<String>>(&self, to: A) -> StdResult<CosmosMsg> {
         match &self.info {
             AssetInfo::Cw20(contract_addr) => Ok(CosmosMsg::Wasm(WasmMsg::Execute {
                 contract_addr: contract_addr.into(),
@@ -222,7 +222,7 @@ mod tests {
     #[test]
     fn creating_instances() {
         let info = AssetInfo::Native(String::from("uusd"));
-        let asset = Asset::new(info, 123456 as u128);
+        let asset = Asset::new(info, 123456);
         assert_eq!(
             asset,
             Asset {
@@ -231,7 +231,7 @@ mod tests {
             }
         );
 
-        let asset = Asset::cw20(Addr::unchecked("mock_token"), 123456 as u128);
+        let asset = Asset::cw20(Addr::unchecked("mock_token"), 123456);
         assert_eq!(
             asset,
             Asset {
@@ -240,7 +240,7 @@ mod tests {
             }
         );
 
-        let asset = Asset::native("uusd", 123456 as u128);
+        let asset = Asset::native("uusd", 123456);
         assert_eq!(
             asset,
             Asset {
@@ -252,10 +252,10 @@ mod tests {
 
     #[test]
     fn comparing() {
-        let uluna1 = Asset::native("uluna", 69 as u128);
-        let uluna2 = Asset::native("uluna", 420 as u128);
-        let uusd = Asset::native("uusd", 69 as u128);
-        let astro = Asset::cw20(Addr::unchecked("astro_token"), 69 as u128);
+        let uluna1 = Asset::native("uluna", 69);
+        let uluna2 = Asset::native("uluna", 420);
+        let uusd = Asset::native("uusd", 69);
+        let astro = Asset::cw20(Addr::unchecked("astro_token"), 69);
 
         assert_eq!(uluna1 == uluna2, false);
         assert_eq!(uluna1 == uusd, false);
@@ -264,18 +264,18 @@ mod tests {
 
     #[test]
     fn displaying() {
-        let asset = Asset::native("uusd", 69420 as u128);
+        let asset = Asset::native("uusd", 69420);
         assert_eq!(asset.to_string(), String::from("uusd:69420"));
 
-        let asset = Asset::cw20(Addr::unchecked("mock_token"), 88888 as u128);
+        let asset = Asset::cw20(Addr::unchecked("mock_token"), 88888);
         assert_eq!(asset.to_string(), String::from("mock_token:88888"));
     }
 
     #[test]
-    fn casting_instances() {
+    fn casting() {
         let deps = mock_dependencies();
 
-        let checked = Asset::cw20(Addr::unchecked("mock_token"), 123456 as u128);
+        let checked = Asset::cw20(Addr::unchecked("mock_token"), 123456);
         let unchecked: AssetUnchecked = checked.clone().into();
 
         assert_eq!(unchecked.check(deps.as_ref().api).unwrap(), checked);
@@ -298,8 +298,8 @@ mod tests {
 
     #[test]
     fn creating_messages() {
-        let asset = Asset::cw20(Addr::unchecked("mock_token"), 123456 as u128);
-        let coin = Asset::native("uusd", 123456 as u128);
+        let asset = Asset::cw20(Addr::unchecked("mock_token"), 123456);
+        let coin = Asset::native("uusd", 123456);
 
         let msg = asset.transfer_msg("alice").unwrap();
         assert_eq!(
@@ -349,25 +349,25 @@ mod tests {
     #[test]
     fn handling_taxes() {
         let mut deps = mock_dependencies();
-        deps.querier.set_native_tax_rate(Decimal::from_ratio(1 as u128, 1000 as u128)); // 0.1%
+        deps.querier.set_native_tax_rate(Decimal::from_ratio(1u128, 1000u128)); // 0.1%
         deps.querier.set_native_tax_cap("uusd", 1000000);
 
         // a relatively small amount that does not hit tax cap
-        let coin = Asset::native("uusd", 1234567 as u128);
+        let coin = Asset::native("uusd", 1234567);
         let total_amount = coin.add_tax(&deps.as_ref().querier).unwrap().amount;
         let deliverable_amount = coin.deduct_tax(&deps.as_ref().querier).unwrap().amount;
         assert_eq!(total_amount, Uint128::new(1235801));
         assert_eq!(deliverable_amount, Uint128::new(1233333));
 
         // a bigger amount that hits tax cap
-        let coin = Asset::native("uusd", 2000000000 as u128);
+        let coin = Asset::native("uusd", 2000000000);
         let total_amount = coin.add_tax(&deps.as_ref().querier).unwrap().amount;
         let deliverable_amount = coin.deduct_tax(&deps.as_ref().querier).unwrap().amount;
         assert_eq!(total_amount, Uint128::new(2001000000));
         assert_eq!(deliverable_amount, Uint128::new(1999000000));
 
         // CW20 tokens don't have the tax issue
-        let coin = Asset::cw20(Addr::unchecked("mock_token"), 1234567 as u128);
+        let coin = Asset::cw20(Addr::unchecked("mock_token"), 1234567);
         let total_amount = coin.add_tax(&deps.as_ref().querier).unwrap().amount;
         let deliverable_amount = coin.deduct_tax(&deps.as_ref().querier).unwrap().amount;
         assert_eq!(total_amount, Uint128::new(1234567));
