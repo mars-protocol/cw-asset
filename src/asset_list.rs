@@ -61,9 +61,14 @@ impl AssetList {
         AssetListBase::default()
     }
 
-    /// Returns the vector of assets
+    /// Return the vector of assets
     pub fn to_vec(&self) -> Vec<Asset> {
         self.0.clone()
+    }
+
+    /// Return the length of the vector
+    pub fn len(&self) -> usize {
+        self.0.len()
     }
 
     /// Find an asset in the list that matches the provided asset info
