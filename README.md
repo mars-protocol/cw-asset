@@ -1,6 +1,8 @@
-# `terra-asset`
+> _**NOTE: This README is still under construction. Contents may be outdated**_
 
-Helpers for interacting with Terra assets, including native coins and CW20 tokens
+# `cw-asset`
+
+Helpers for interacting with Cosmos assets, including native coins and CW20 tokens
 
 ## Usage
 
@@ -15,7 +17,7 @@ This crate contains three struct types:
 Instances of `AssetInfo` and `Asset` can be created as follows:
 
 ```rust
-use terra_asset::{AssetInfo, Asset};
+use cw_asset::{AssetInfo, Asset};
 
 // native coin
 let coin_info = AssetInfo::native("uusd");
@@ -52,7 +54,7 @@ TOKEN_INFO.save(deps.storage, &token_info)?;
 #### Using the unchecked type in messages
 
 ```rust
-use terra_asset::AssetInfoUnchecked;
+use cw_asset::AssetInfoUnchecked;
 
 pub struct InstantiateMsg {
     token_info: AssetInfoUnchecked,
@@ -146,7 +148,7 @@ The string representation of the asset is `label:amount` where `label` is the de
 `AssetList` is a wrapper of `Vec<Asset>` which allows you to carry out operations on multiple assets at once. For example, to send both a native coin and a CW20 token to Alice:
 
 ```rust
-use terra_asset::{Asset, AssetList};
+use cw_asset::{Asset, AssetList};
 
 let mut assets = AssetList::new();
 assets.add(Asset::native("uusd", 12345));
