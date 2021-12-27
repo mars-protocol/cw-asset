@@ -1,6 +1,6 @@
 use std::fmt;
 
-use cosmwasm_std::{Addr, Api, CosmosMsg, StdError, StdResult};
+use cosmwasm_std::{Addr, Api, Coin, CosmosMsg, StdError, StdResult};
 
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -57,7 +57,19 @@ impl From<Vec<Asset>> for AssetList {
 
 impl From<&[Asset]> for AssetList {
     fn from(vec: &[Asset]) -> Self {
-        Self(vec.to_vec())
+        vec.to_vec().into()
+    }
+}
+
+impl From<Vec<Coin>> for AssetList {
+    fn from(coins: Vec<Coin>) -> Self {
+        Self(coins.iter().map(|coin| coin.into()).collect())
+    }
+}
+
+impl From<&[Coin]> for AssetList {
+    fn from(coins: &[Coin]) -> Self {
+        coins.to_vec().into()
     }
 }
 

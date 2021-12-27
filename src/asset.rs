@@ -50,6 +50,21 @@ impl fmt::Display for Asset {
     }
 }
 
+impl From<Coin> for Asset {
+    fn from(coin: Coin) -> Self {
+        Self {
+            info: AssetInfo::Native(coin.denom),
+            amount: coin.amount,
+        }
+    }
+}
+
+impl From<&Coin> for Asset {
+    fn from(coin: &Coin) -> Self {
+        coin.clone().into()
+    }
+}
+
 impl Asset {
     /// Create a new `AssetBase` instance based on given asset info and amount
     pub fn new(info: AssetInfo, amount: u128) -> Self {
