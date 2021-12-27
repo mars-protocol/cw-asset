@@ -1,11 +1,11 @@
 [package]
-name = "terra-asset"
-description = "Helper library for interacting with Terra assets (SDK coins and CW20 tokens)"
+name = "cw-asset"
+description = "Helper library for interacting with Cosmos assets (SDK coins and CW20 tokens)"
 version = "0.2.1"
 authors = ["larry <larry@delphidigital.io>"]
 edition = "2018"
 license = "MIT"
-repository = "https://github.com/larry0x/terra-asset"
+repository = "https://github.com/larry0x/cw-asset"
 
 [lib]
 doctest = false # do not run doc tests
@@ -14,8 +14,11 @@ doctest = false # do not run doc tests
 cosmwasm-std = "0.16.0"
 cw20 = "0.9.1"
 
-terra-cosmwasm = "2.2.0"
-
 schemars = "0.8.1"
 serde = { version = "1.0.103", default-features = false, features = ["derive"] }
 thiserror = "1.0.23"
+
+terra-cosmwasm = { version = "2.2.0", optional = true }
+
+[features]
+terra = ["terra-cosmwasm"]

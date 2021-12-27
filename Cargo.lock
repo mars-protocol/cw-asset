@@ -124,6 +124,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "cw-asset"
+version = "0.2.1"
+dependencies = [
+ "cosmwasm-std",
+ "cw20",
+ "schemars",
+ "serde",
+ "terra-cosmwasm",
+ "thiserror",
+]
+
+[[package]]
 name = "cw0"
 version = "0.9.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -492,18 +504,6 @@ dependencies = [
  "proc-macro2",
  "quote",
  "unicode-xid",
-]
-
-[[package]]
-name = "terra-asset"
-version = "0.2.1"
-dependencies = [
- "cosmwasm-std",
- "cw20",
- "schemars",
- "serde",
- "terra-cosmwasm",
- "thiserror",
 ]
 
 [[package]]

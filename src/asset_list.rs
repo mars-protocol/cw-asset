@@ -1,6 +1,6 @@
 use std::fmt;
 
-use cosmwasm_std::{Addr, Api, CosmosMsg, QuerierWrapper, StdError, StdResult};
+use cosmwasm_std::{Addr, Api, CosmosMsg, StdError, StdResult};
 
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -116,6 +116,20 @@ impl AssetList {
         self.0.retain(|asset| !asset.amount.is_zero());
     }
 
+    /// Generate a transfer messages for every asset in the list
+    pub fn transfer_msgs<A: Into<String> + Clone>(&self, to: A) -> StdResult<Vec<CosmosMsg>> {
+        self.0
+            .iter()
+            .map(|asset| asset.transfer_msg(to.clone()))
+            .collect::<StdResult<Vec<CosmosMsg>>>()
+    }
+}
+
+#[cfg(feature = "terra")]
+use cosmwasm_std::QuerierWrapper;
+
+#[cfg(feature = "terra")]
+impl AssetList {
     /// Execute `add_tax` to every asset in the list; returns a new `AssetList` instance with the
     /// updated amounts
     pub fn add_tax(&self, querier: &QuerierWrapper) -> StdResult<AssetList> {
@@ -134,22 +148,15 @@ impl AssetList {
                 .collect::<StdResult<Vec<Asset>>>()?,
         ))
     }
-
-    /// Generate a transfer messages for every asset in the list
-    pub fn transfer_msgs<A: Into<String> + Clone>(&self, to: A) -> StdResult<Vec<CosmosMsg>> {
-        self.0
-            .iter()
-            .map(|asset| asset.transfer_msg(to.clone()))
-            .collect::<StdResult<Vec<CosmosMsg>>>()
-    }
 }
 
-#[cfg(test)]
+#[cfg(all(test, feature = "terra"))]
 mod tests {
     use super::super::asset::Asset;
     use super::super::asset_info::AssetInfo;
     use super::*;
     use crate::testing::mock_dependencies;
+    use cosmwasm_std::testing::MockApi;
     use cosmwasm_std::{
         to_binary, BankMsg, Coin, CosmosMsg, Decimal, OverflowError, OverflowOperation, Uint128,
         WasmMsg,
@@ -176,12 +183,12 @@ mod tests {
 
     #[test]
     fn casting() {
-        let deps = mock_dependencies();
+        let api = MockApi::default();
 
         let checked = mock_list();
         let unchecked: AssetListUnchecked = checked.clone().into();
 
-        assert_eq!(unchecked.check(deps.as_ref().api).unwrap(), checked);
+        assert_eq!(unchecked.check(&api).unwrap(), checked);
     }
 
     #[test]

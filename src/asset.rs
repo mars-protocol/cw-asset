@@ -1,19 +1,14 @@
 use std::fmt;
 
 use cosmwasm_std::{
-    to_binary, Addr, Api, BankMsg, Coin, CosmosMsg, QuerierWrapper, StdError, StdResult, Uint128,
-    WasmMsg,
+    to_binary, Addr, Api, BankMsg, Coin, CosmosMsg, StdError, StdResult, Uint128, WasmMsg,
 };
 use cw20::Cw20ExecuteMsg;
-
-use terra_cosmwasm::TerraQuerier;
 
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
 use super::asset_info::{AssetInfo, AssetInfoBase};
-
-static DECIMAL_FRACTION: Uint128 = Uint128::new(1_000_000_000_000_000_000u128);
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct AssetBase<T> {
@@ -136,7 +131,16 @@ impl Asset {
             } => Err(StdError::generic_err("native coins do not have `transfer_from` method")),
         }
     }
+}
 
+#[cfg(feature = "terra")]
+use {cosmwasm_std::QuerierWrapper, terra_cosmwasm::TerraQuerier};
+
+#[cfg(feature = "terra")]
+static DECIMAL_FRACTION: Uint128 = Uint128::new(1_000_000_000_000_000_000u128);
+
+#[cfg(feature = "terra")]
+impl Asset {
     /// Compute total cost (including tax) if the the asset is to be transferred
     ///
     /// **Usage:**
@@ -209,14 +213,11 @@ impl Asset {
     }
 }
 
-//--------------------------------------------------------------------------------------------------
-// Testing
-//--------------------------------------------------------------------------------------------------
-
-#[cfg(test)]
+#[cfg(all(test, feature = "terra"))]
 mod tests {
     use super::*;
     use crate::testing::mock_dependencies;
+    use cosmwasm_std::testing::MockApi;
     use cosmwasm_std::Decimal;
 
     #[test]
@@ -273,12 +274,12 @@ mod tests {
 
     #[test]
     fn casting() {
-        let deps = mock_dependencies();
+        let api = MockApi::default();
 
         let checked = Asset::cw20(Addr::unchecked("mock_token"), 123456);
         let unchecked: AssetUnchecked = checked.clone().into();
 
-        assert_eq!(unchecked.check(deps.as_ref().api).unwrap(), checked);
+        assert_eq!(unchecked.check(&api).unwrap(), checked);
     }
 
     #[test]

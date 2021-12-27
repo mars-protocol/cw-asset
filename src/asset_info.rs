@@ -92,7 +92,7 @@ impl AssetInfo {
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::testing::mock_dependencies;
+    use cosmwasm_std::testing::MockApi;
 
     #[test]
     fn creating_instances() {
@@ -128,11 +128,11 @@ mod test {
 
     #[test]
     fn checking() {
-        let deps = mock_dependencies();
+        let api = MockApi::default();
 
         let checked = AssetInfo::cw20(Addr::unchecked("mock_token"));
         let unchecked: AssetInfoUnchecked = checked.clone().into();
 
-        assert_eq!(unchecked.check(deps.as_ref().api).unwrap(), checked);
+        assert_eq!(unchecked.check(&api).unwrap(), checked);
     }
 }
