@@ -85,6 +85,8 @@ impl AssetList {
             }
         }
 
+        self.purge();
+
         Ok(())
     }
 
@@ -104,9 +106,14 @@ impl AssetList {
             }
         }
 
-        self.0.retain(|asset| !asset.amount.is_zero());
+        self.purge();
 
         Ok(())
+    }
+
+    /// Delete all assets in the list that has zero amount
+    pub fn purge(&mut self) {
+        self.0.retain(|asset| !asset.amount.is_zero());
     }
 
     /// Execute `add_tax` to every asset in the list; returns a new `AssetList` instance with the
