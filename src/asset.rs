@@ -1,7 +1,7 @@
 use std::fmt;
 
 use cosmwasm_std::{
-    to_binary, Addr, Api, BankMsg, Coin, CosmosMsg, StdError, StdResult, Uint128, WasmMsg,
+    to_binary, Addr, Api, BankMsg, Binary, Coin, CosmosMsg, StdError, StdResult, Uint128, WasmMsg,
 };
 use cw20::Cw20ExecuteMsg;
 
@@ -90,17 +90,46 @@ impl Asset {
         }
     }
 
-    /// Generate a message the sends the asset from the sender to account `to`
+    /// Generate a message that sends a CW20 token to the specified recipient with a binary payload
     ///
-    /// NOTE: In general, it is neccessaryto first deduct tax before calling this method.
+    /// NOTE: Only works for CW20 tokens
     ///
     /// **Usage:**
-    /// The following code generaates a message that sends 12345 uusd (i.e. 0.012345 UST) to Alice.
+    /// The following code generates a message that sends 12345 units of a mock token to a contract,
+    /// invoking a mock execute function.
+    ///
+    /// ```rust
+    /// let asset = Asset::cw20(Addr::unchecked("mock_token"), 12345);
+    /// let msg = asset.send_msg("mock_contract", to_binary(&ExecuteMsg::MockFunction {})?)?;
+    /// ```
+    pub fn send_msg<A: Into<String>>(&self, to: A, msg: Binary) -> StdResult<CosmosMsg> {
+        match &self.info {
+            AssetInfo::Cw20(contract_addr) => Ok(CosmosMsg::Wasm(WasmMsg::Execute {
+                contract_addr: contract_addr.into(),
+                msg: to_binary(&Cw20ExecuteMsg::Send {
+                    contract: to.into(),
+                    amount: self.amount,
+                    msg,
+                })?,
+                funds: vec![],
+            })),
+            AssetInfo::Native(_) => {
+                Err(StdError::generic_err("native coins do not have `send` method"))
+            }
+        }
+    }
+
+    /// Generate a message that transfers the asset from the sender to account `to`
+    ///
+    /// NOTE: It is generally neccessary to first deduct tax before calling this method.
+    ///
+    /// **Usage:**
+    /// The following code generates a message that sends 12345 uusd (i.e. 0.012345 UST) to Alice.
     /// Note that due to tax, the actual deliverable amount is smaller than 12345 uusd.
     ///
     /// ```rust
     /// let asset = Asset::native("uusd", 12345);
-    /// let msg = Asset.deduct_tax(&deps.querier)?.transfer_msg("alice")?;
+    /// let msg = asset.deduct_tax(&deps.querier)?.transfer_msg("alice")?;
     /// ```
     pub fn transfer_msg<A: Into<String>>(&self, to: A) -> StdResult<CosmosMsg> {
         match &self.info {
@@ -147,9 +176,9 @@ impl Asset {
                 })?,
                 funds: vec![],
             })),
-            AssetInfo::Native {
-                ..
-            } => Err(StdError::generic_err("native coins do not have `transfer_from` method")),
+            AssetInfo::Native(_) => {
+                Err(StdError::generic_err("native coins do not have `transfer_from` method"))
+            }
         }
     }
 }
@@ -267,6 +296,11 @@ mod tests {
     use super::*;
     use cosmwasm_std::testing::MockApi;
 
+    #[derive(Serialize)]
+    enum MockExecuteMsg {
+        MockCommand {},
+    }
+
     #[test]
     fn creating_instances() {
         let info = AssetInfo::Native(String::from("uusd"));
@@ -331,10 +365,29 @@ mod tests {
 
     #[test]
     fn creating_messages() {
-        let asset = Asset::cw20(Addr::unchecked("mock_token"), 123456);
+        let token = Asset::cw20(Addr::unchecked("mock_token"), 123456);
         let coin = Asset::native("uusd", 123456);
 
-        let msg = asset.transfer_msg("alice").unwrap();
+        let bin_msg = to_binary(&MockExecuteMsg::MockCommand {}).unwrap();
+        let msg = token.send_msg("mock_contract", bin_msg.clone()).unwrap();
+        assert_eq!(
+            msg,
+            CosmosMsg::Wasm(WasmMsg::Execute {
+                contract_addr: String::from("mock_token"),
+                msg: to_binary(&Cw20ExecuteMsg::Send {
+                    contract: String::from("mock_contract"),
+                    amount: Uint128::new(123456),
+                    msg: to_binary(&MockExecuteMsg::MockCommand {}).unwrap()
+                })
+                .unwrap(),
+                funds: vec![]
+            })
+        );
+
+        let err = coin.send_msg("mock_contract", bin_msg);
+        assert_eq!(err, Err(StdError::generic_err("native coins do not have `send` method")));
+
+        let msg = token.transfer_msg("alice").unwrap();
         assert_eq!(
             msg,
             CosmosMsg::Wasm(WasmMsg::Execute {
@@ -357,7 +410,7 @@ mod tests {
             })
         );
 
-        let msg = asset.transfer_from_msg("bob", "charlie").unwrap();
+        let msg = token.transfer_from_msg("bob", "charlie").unwrap();
         assert_eq!(
             msg,
             CosmosMsg::Wasm(WasmMsg::Execute {
