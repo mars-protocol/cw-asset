@@ -4,11 +4,13 @@ Helpers for interacting with Terra assets, including native coins and CW20 token
 
 ## Usage
 
-This crate contains two struct types:
+This crate contains three struct types:
 
 - `AssetInfo` stores key information of an asset type – for CW20 tokens, the contract address; for native coins, the denomination
 
 - `Asset` represents an asset of specific amount
+
+- `AssetList` is a wrapper for `Vec<Asset>` which allows carrying out operations on multiple assets
 
 Instances of `AssetInfo` and `Asset` can be created as follows:
 
@@ -18,17 +20,16 @@ use terra_asset::{AssetInfo, Asset};
 // native coin
 let coin_info = AssetInfo::native("uusd");
 
-let coin = Asset::new(coin_info, 69420 as u128);
+let coin = Asset::new(coin_info, 69420);
 // or
-let coin = Asset::native("uusd", 69420 as u128);
+let coin = Asset::native("uusd", 69420);
 
 // CW20 token
-let token_addr = deps.api.addr_validate("mock_token")?;
-let token_info = AssetInfo::cw20(token_addr.clone());
+let token_info = AssetInfo::cw20(deps.api.addr_validate("mock_token")?);
 
-let token = Asset::new(token_info, 12345 as u128);
+let token = Asset::new(token_info, 12345);
 // or
-let token = Asset::cw20(token_addr, 12345 as u128);
+let token = Asset::cw20(deps.api.addr_validate("mock_token")?, 12345);
 ```
 
 ### Checked and unchecked types
@@ -85,7 +86,7 @@ The `Asset` type implements two helper functions for handling taxes:
 Calculates the deliverable amount (tax deducted) when sending an asset:
 
 ```rust
-let coin = Asset::native("uusd", 100000000 as u128);
+let coin = Asset::native("uusd", 100000000);
 let coin_after_tax = coin.deduct_tax(&deps.querier)?;
 // at 0.1% tax rate, `coin_after_tax.amount` should be 99900099
 ```
@@ -95,7 +96,7 @@ let coin_after_tax = coin.deduct_tax(&deps.querier)?;
 Calculates the total cost (including tax) for sending an asset:
 
 ```rust
-let coin = Asset::native("uusd", 99900099 as u128);
+let coin = Asset::native("uusd", 99900099);
 let coin_with_tax = coin.add_tax(&deps.querier)?;
 // at 0.1% tax rate, `coin_with_tax.amount` should be 99999999
 ```
@@ -109,7 +110,7 @@ The `Asset` type also comes with helper functions for generating messages:
 The following example creates a message for transferring 100 UST to Bob. Note that we first deduct tax before generating the message:
 
 ```rust
-let coin = Asset::native("uusd", 100000000 as u128);
+let coin = Asset::native("uusd", 100000000);
 let msg = coin.deduct_tax(&deps.querier)?.transfer_msg("bob_address")?;
 let res = Response::new().add_message(msg);
 ```
@@ -123,12 +124,12 @@ The following example creates a message that draws 100 MIR tokens from Alice's w
 - Invoking `transfer_from_msg` on an native coin will result in error, as native coins don't have the `TransferFrom` method
 
 ```rust
-let token = Asset::cw20(deps.api.addr_validate("mock_token")?, 100000000 as u128);
+let token = Asset::cw20(deps.api.addr_validate("mock_token")?, 100000000);
 let msg = token.transfer_from_msg("alice", "bob")?;
 let res = Response::new().add_message(msg);
 ```
 
-### Stringify
+### Stringification
 
 The [`std::fmt::Display`](https://doc.rust-lang.org/std/fmt/trait.Display.html) trait is implemented for `AssetInfo` and `Asset`, so you can easily invoke `to_string` method to generate a string representation of the asset. This may be useful when creating logging outputs:
 
@@ -139,6 +140,21 @@ let res = Response::new()
 ```
 
 The string representation of the asset is `label:amount` where `label` is the denom for native coins, or the contract address for CW20 tokens.
+
+### Asset list
+
+`AssetList` is a wrapper of `Vec<Asset>` which allows you to carry out operations on multiple assets at once. For example, to send both a native coin and a CW20 token to Alice:
+
+```rust
+use terra_asset::{Asset, AssetList};
+
+let mut assets = AssetList::new();
+assets.add(Asset::native("uusd", 12345));
+assets.add(Asset::cw20(api.addr_validate("mock_token")?, 67890));
+
+let msgs = assets.deduct_tax(&deps.querier)?.transfer_msgs("alice")?;
+let res = Response::new().add_messages(msgs);
+```
 
 ## License
 
