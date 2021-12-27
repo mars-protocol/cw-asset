@@ -55,6 +55,12 @@ impl From<Vec<Asset>> for AssetList {
     }
 }
 
+impl From<&[Asset]> for AssetList {
+    fn from(vec: &[Asset]) -> Self {
+        Self(vec.to_vec())
+    }
+}
+
 impl AssetList {
     /// Create a new, empty asset list
     pub fn new() -> Self {
