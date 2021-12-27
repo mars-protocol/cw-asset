@@ -131,7 +131,7 @@ mod test {
         let deps = mock_dependencies();
 
         let checked = AssetInfo::cw20(Addr::unchecked("mock_token"));
-        let unchecked: AssetInfoUnchecked = checked.into();
+        let unchecked: AssetInfoUnchecked = checked.clone().into();
 
         assert_eq!(unchecked.check(deps.as_ref().api).unwrap(), checked);
     }
