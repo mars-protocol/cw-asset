@@ -8,7 +8,13 @@ use cw20::Cw20ExecuteMsg;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
+#[cfg(feature = "terra")]
+use {cosmwasm_std::QuerierWrapper, terra_cosmwasm::TerraQuerier};
+
 use super::asset_info::{AssetInfo, AssetInfoBase};
+
+#[cfg(feature = "terra")]
+static DECIMAL_FRACTION: Uint128 = Uint128::new(1_000_000_000_000_000_000u128);
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct AssetBase<T> {
@@ -134,12 +140,6 @@ impl Asset {
 }
 
 #[cfg(feature = "terra")]
-use {cosmwasm_std::QuerierWrapper, terra_cosmwasm::TerraQuerier};
-
-#[cfg(feature = "terra")]
-static DECIMAL_FRACTION: Uint128 = Uint128::new(1_000_000_000_000_000_000u128);
-
-#[cfg(feature = "terra")]
 impl Asset {
     /// Compute total cost (including tax) if the the asset is to be transferred
     ///
@@ -213,12 +213,44 @@ impl Asset {
     }
 }
 
-#[cfg(all(test, feature = "terra"))]
+#[cfg(feature = "legacy")]
+impl From<Asset> for astroport::asset::Asset {
+    fn from(asset: Asset) -> Self {
+        Self {
+            info: asset.info.into(),
+            amount: asset.amount,
+        }
+    }
+}
+
+#[cfg(feature = "legacy")]
+impl From<&Asset> for astroport::asset::Asset {
+    fn from(asset: &Asset) -> Self {
+        asset.clone().into()
+    }
+}
+
+#[cfg(feature = "legacy")]
+impl From<astroport::asset::Asset> for Asset {
+    fn from(legacy_asset: astroport::asset::Asset) -> Self {
+        Self {
+            info: legacy_asset.info.into(),
+            amount: legacy_asset.amount,
+        }
+    }
+}
+
+#[cfg(feature = "legacy")]
+impl From<&astroport::asset::Asset> for Asset {
+    fn from(legacy_asset: &astroport::asset::Asset) -> Self {
+        legacy_asset.clone().into()
+    }
+}
+
+#[cfg(test)]
 mod tests {
     use super::*;
-    use crate::testing::mock_dependencies;
     use cosmwasm_std::testing::MockApi;
-    use cosmwasm_std::Decimal;
 
     #[test]
     fn creating_instances() {
@@ -283,21 +315,6 @@ mod tests {
     }
 
     #[test]
-    fn querying_balance() {
-        let mut deps = mock_dependencies();
-        deps.querier.set_base_balances("alice", &[Coin::new(69420, "uusd")]);
-        deps.querier.set_cw20_balance("mock_token", "bob", 88888);
-
-        let coin = AssetInfo::native("uusd");
-        let balance = coin.query_balance(&deps.as_ref().querier, "alice").unwrap();
-        assert_eq!(balance, Uint128::new(69420));
-
-        let token = AssetInfo::cw20(Addr::unchecked("mock_token"));
-        let balance = token.query_balance(&deps.as_ref().querier, "bob").unwrap();
-        assert_eq!(balance, Uint128::new(88888));
-    }
-
-    #[test]
     fn creating_messages() {
         let asset = Asset::cw20(Addr::unchecked("mock_token"), 123456);
         let coin = Asset::native("uusd", 123456);
@@ -346,6 +363,28 @@ mod tests {
             Err(StdError::generic_err("native coins do not have `transfer_from` method"))
         );
     }
+}
+
+#[cfg(all(test, feature = "terra"))]
+mod tests_terra {
+    use super::*;
+    use crate::testing::mock_dependencies;
+    use cosmwasm_std::Decimal;
+
+    #[test]
+    fn querying_balance() {
+        let mut deps = mock_dependencies();
+        deps.querier.set_base_balances("alice", &[Coin::new(69420, "uusd")]);
+        deps.querier.set_cw20_balance("mock_token", "bob", 88888);
+
+        let coin = AssetInfo::native("uusd");
+        let balance = coin.query_balance(&deps.as_ref().querier, "alice").unwrap();
+        assert_eq!(balance, Uint128::new(69420));
+
+        let token = AssetInfo::cw20(Addr::unchecked("mock_token"));
+        let balance = token.query_balance(&deps.as_ref().querier, "bob").unwrap();
+        assert_eq!(balance, Uint128::new(88888));
+    }
 
     #[test]
     fn handling_taxes() {
@@ -373,5 +412,27 @@ mod tests {
         let deliverable_amount = coin.deduct_tax(&deps.as_ref().querier).unwrap().amount;
         assert_eq!(total_amount, Uint128::new(1234567));
         assert_eq!(deliverable_amount, Uint128::new(1234567));
+    }
+}
+
+#[cfg(all(test, feature = "legacy"))]
+mod tests_legacy {
+    use super::*;
+
+    #[test]
+    fn casting_legacy() {
+        let legacy_asset = astroport::asset::Asset {
+            info: astroport::asset::AssetInfo::NativeToken {
+                denom: String::from("uusd"),
+            },
+            amount: Uint128::new(69420),
+        };
+
+        let asset = Asset::native("uusd", 69420);
+
+        assert_eq!(asset, Asset::from(&legacy_asset));
+        assert_eq!(asset, Asset::from(legacy_asset.clone()));
+        assert_eq!(legacy_asset, astroport::asset::Asset::from(&asset));
+        assert_eq!(legacy_asset, astroport::asset::Asset::from(asset));
     }
 }

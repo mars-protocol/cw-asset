@@ -5,6 +5,9 @@ use cosmwasm_std::{Addr, Api, CosmosMsg, StdError, StdResult};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
+#[cfg(feature = "terra")]
+use cosmwasm_std::QuerierWrapper;
+
 use super::asset::{Asset, AssetBase};
 use super::asset_info::AssetInfo;
 
@@ -126,9 +129,6 @@ impl AssetList {
 }
 
 #[cfg(feature = "terra")]
-use cosmwasm_std::QuerierWrapper;
-
-#[cfg(feature = "terra")]
 impl AssetList {
     /// Execute `add_tax` to every asset in the list; returns a new `AssetList` instance with the
     /// updated amounts
@@ -150,30 +150,53 @@ impl AssetList {
     }
 }
 
-#[cfg(all(test, feature = "terra"))]
-mod tests {
-    use super::super::asset::Asset;
-    use super::super::asset_info::AssetInfo;
-    use super::*;
-    use crate::testing::mock_dependencies;
-    use cosmwasm_std::testing::MockApi;
-    use cosmwasm_std::{
-        to_binary, BankMsg, Coin, CosmosMsg, Decimal, OverflowError, OverflowOperation, Uint128,
-        WasmMsg,
-    };
-    use cw20::Cw20ExecuteMsg;
+#[cfg(feature = "legacy")]
+impl From<AssetList> for Vec<astroport::asset::Asset> {
+    fn from(list: AssetList) -> Self {
+        list.0.iter().map(|asset| asset.into()).collect()
+    }
+}
 
-    fn uusd() -> AssetInfo {
+#[cfg(feature = "legacy")]
+impl From<&AssetList> for Vec<astroport::asset::Asset> {
+    fn from(list: &AssetList) -> Self {
+        list.clone().into()
+    }
+}
+
+#[cfg(feature = "legacy")]
+impl AssetList {
+    pub fn from_legacy(legacy_list: &[astroport::asset::Asset]) -> Self {
+        Self(legacy_list.to_vec().iter().map(|asset| asset.into()).collect())
+    }
+}
+
+#[cfg(test)]
+mod test_helpers {
+    use super::super::asset::Asset;
+    use super::*;
+
+    pub fn uusd() -> AssetInfo {
         AssetInfo::native("uusd")
     }
-
-    fn mock_token() -> AssetInfo {
+    pub fn mock_token() -> AssetInfo {
         AssetInfo::cw20(Addr::unchecked("mock_token"))
     }
-
-    fn mock_list() -> AssetList {
-        AssetList::from(vec![Asset::new(uusd(), 69420), Asset::new(mock_token(), 88888)])
+    pub fn mock_list() -> AssetList {
+        AssetList::from(vec![Asset::native("uusd", 69420), Asset::new(mock_token(), 88888)])
     }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::super::asset::Asset;
+    use super::test_helpers::{mock_list, mock_token, uusd};
+    use super::*;
+    use cosmwasm_std::testing::MockApi;
+    use cosmwasm_std::{
+        to_binary, BankMsg, Coin, CosmosMsg, OverflowError, OverflowOperation, Uint128, WasmMsg,
+    };
+    use cw20::Cw20ExecuteMsg;
 
     #[test]
     fn displaying() {
@@ -268,6 +291,14 @@ mod tests {
             ]
         );
     }
+}
+
+#[cfg(all(test, feature = "terra"))]
+mod tests_terra {
+    use super::test_helpers::{mock_list, mock_token, uusd};
+    use super::*;
+    use crate::testing::mock_dependencies;
+    use cosmwasm_std::Decimal;
 
     #[test]
     fn handling_taxes() {
@@ -288,5 +319,36 @@ mod tests {
             list_after_tax,
             AssetList::from(vec![Asset::new(uusd(), 69350), Asset::new(mock_token(), 88888)])
         );
+    }
+}
+
+#[cfg(all(test, feature = "legacy"))]
+mod tests_legacy {
+    use super::test_helpers::mock_list;
+    use super::*;
+    use cosmwasm_std::Uint128;
+
+    #[test]
+    fn casting_legacy() {
+        let legacy_list = vec![
+            astroport::asset::Asset {
+                info: astroport::asset::AssetInfo::NativeToken {
+                    denom: String::from("uusd"),
+                },
+                amount: Uint128::new(69420),
+            },
+            astroport::asset::Asset {
+                info: astroport::asset::AssetInfo::Token {
+                    contract_addr: Addr::unchecked("mock_token"),
+                },
+                amount: Uint128::new(88888),
+            },
+        ];
+
+        let list = mock_list();
+
+        assert_eq!(list, AssetList::from_legacy(&legacy_list));
+        assert_eq!(legacy_list, Vec::<astroport::asset::Asset>::from(&list));
+        assert_eq!(legacy_list, Vec::<astroport::asset::Asset>::from(list));
     }
 }
