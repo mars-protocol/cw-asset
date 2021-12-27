@@ -140,7 +140,7 @@ dependencies = [
 
 [[package]]
 name = "cw-asset"
-version = "0.2.1"
+version = "0.3.0"
 dependencies = [
  "astroport",
  "cosmwasm-std",
@@ -148,7 +148,6 @@ dependencies = [
  "schemars",
  "serde",
  "terra-cosmwasm",
- "thiserror",
 ]
 
 [[package]]
