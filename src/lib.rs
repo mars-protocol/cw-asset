@@ -2,9 +2,9 @@ mod asset;
 mod asset_info;
 mod asset_list;
 
-pub use asset::{Asset, AssetUnchecked};
-pub use asset_info::{AssetInfo, AssetInfoUnchecked};
-pub use asset_list::{AssetList, AssetListUnchecked};
+pub use asset::*;
+pub use asset_info::*;
+pub use asset_list::*;
 
 #[cfg(all(test, feature = "terra"))]
-pub mod testing;
+mod testing;
