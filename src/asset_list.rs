@@ -79,14 +79,30 @@ impl AssetList {
         AssetListBase::default()
     }
 
-    /// Return the vector of assets
+    /// Return a copy of the underlying vector
     pub fn to_vec(&self) -> Vec<Asset> {
         self.0.clone()
     }
 
-    /// Return the length of the vector
+    /// Return length of the asset list
     pub fn len(&self) -> usize {
         self.0.len()
+    }
+
+    /// Apply a mutation on each of the asset
+    pub fn map<F: FnMut(&Asset) -> Asset>(&mut self, f: F) {
+        self.0 = self.0.iter().map(f).collect();
+    }
+
+    /// Apply a mutation that may or may not succeed on each of the asset
+    pub fn may_map<F: FnMut(&Asset) -> StdResult<Asset>>(&mut self, f: F) -> StdResult<()> {
+        self.0 = self.0.iter().map(f).collect::<StdResult<Vec<Asset>>>()?;
+        Ok(())
+    }
+
+    /// Removes all assets in the list that has zero amount
+    pub fn purge(&mut self) {
+        self.0.retain(|asset| !asset.amount.is_zero());
     }
 
     /// Find an asset in the list that matches the provided asset info
@@ -137,11 +153,6 @@ impl AssetList {
         Ok(())
     }
 
-    /// Delete all assets in the list that has zero amount
-    pub fn purge(&mut self) {
-        self.0.retain(|asset| !asset.amount.is_zero());
-    }
-
     /// Generate a transfer messages for every asset in the list
     pub fn transfer_msgs<A: Into<String> + Clone>(&self, to: A) -> StdResult<Vec<CosmosMsg>> {
         self.0
@@ -156,20 +167,17 @@ impl AssetList {
     /// Execute `add_tax` to every asset in the list; returns a new `AssetList` instance with the
     /// updated amounts
     pub fn add_tax(&self, querier: &QuerierWrapper) -> StdResult<AssetList> {
-        Ok(Self(
-            self.0.iter().map(|asset| asset.add_tax(querier)).collect::<StdResult<Vec<Asset>>>()?,
-        ))
+        let mut clone = self.clone();
+        clone.may_map(|asset| asset.add_tax(querier))?;
+        Ok(clone)
     }
 
     /// Execute `deduct_tax` to every asset in the list; returns a new `AssetList` instance with the
     /// updated amounts
     pub fn deduct_tax(&self, querier: &QuerierWrapper) -> StdResult<AssetList> {
-        Ok(Self(
-            self.0
-                .iter()
-                .map(|asset| asset.deduct_tax(querier))
-                .collect::<StdResult<Vec<Asset>>>()?,
-        ))
+        let mut clone = self.clone();
+        clone.may_map(|asset| asset.deduct_tax(querier))?;
+        Ok(clone)
     }
 }
 
