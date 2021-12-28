@@ -67,7 +67,7 @@ impl From<&Coin> for Asset {
 
 impl Asset {
     /// Create a new `AssetBase` instance based on given asset info and amount
-    pub fn new(info: AssetInfo, amount: u128) -> Self {
+    pub fn new<B: Into<Uint128>>(info: AssetInfo, amount: B) -> Self {
         Self {
             info,
             amount: amount.into(),
@@ -75,7 +75,7 @@ impl Asset {
     }
 
     /// Create a new `AssetBase` instance representing a CW20 token of given contract address and amount
-    pub fn cw20(contract_addr: Addr, amount: u128) -> Self {
+    pub fn cw20<B: Into<Uint128>>(contract_addr: Addr, amount: B) -> Self {
         Self {
             info: AssetInfoBase::cw20(contract_addr),
             amount: amount.into(),
@@ -83,7 +83,7 @@ impl Asset {
     }
 
     /// Create a new `AssetBase` instance representing a native coin of given denom
-    pub fn native<A: Into<String>>(denom: A, amount: u128) -> Self {
+    pub fn native<A: Into<String>, B: Into<Uint128>>(denom: A, amount: B) -> Self {
         Self {
             info: AssetInfoBase::native(denom),
             amount: amount.into(),
@@ -318,40 +318,40 @@ mod tests {
     #[test]
     fn creating_instances() {
         let info = AssetInfo::Native(String::from("uusd"));
-        let asset = Asset::new(info, 123456);
+        let asset = Asset::new(info, 123456u128);
         assert_eq!(
             asset,
             Asset {
                 info: AssetInfo::Native(String::from("uusd")),
-                amount: Uint128::new(123456)
+                amount: Uint128::new(123456u128)
             }
         );
 
-        let asset = Asset::cw20(Addr::unchecked("mock_token"), 123456);
+        let asset = Asset::cw20(Addr::unchecked("mock_token"), 123456u128);
         assert_eq!(
             asset,
             Asset {
                 info: AssetInfo::Cw20(Addr::unchecked("mock_token")),
-                amount: Uint128::new(123456)
+                amount: Uint128::new(123456u128)
             }
         );
 
-        let asset = Asset::native("uusd", 123456);
+        let asset = Asset::native("uusd", 123456u128);
         assert_eq!(
             asset,
             Asset {
                 info: AssetInfo::Native(String::from("uusd")),
-                amount: Uint128::new(123456)
+                amount: Uint128::new(123456u128)
             }
         )
     }
 
     #[test]
     fn comparing() {
-        let uluna1 = Asset::native("uluna", 69);
-        let uluna2 = Asset::native("uluna", 420);
-        let uusd = Asset::native("uusd", 69);
-        let astro = Asset::cw20(Addr::unchecked("astro_token"), 69);
+        let uluna1 = Asset::native("uluna", 69u128);
+        let uluna2 = Asset::native("uluna", 420u128);
+        let uusd = Asset::native("uusd", 69u128);
+        let astro = Asset::cw20(Addr::unchecked("astro_token"), 69u128);
 
         assert_eq!(uluna1 == uluna2, false);
         assert_eq!(uluna1 == uusd, false);
@@ -360,10 +360,10 @@ mod tests {
 
     #[test]
     fn displaying() {
-        let asset = Asset::native("uusd", 69420);
+        let asset = Asset::native("uusd", 69420u128);
         assert_eq!(asset.to_string(), String::from("uusd:69420"));
 
-        let asset = Asset::cw20(Addr::unchecked("mock_token"), 88888);
+        let asset = Asset::cw20(Addr::unchecked("mock_token"), 88888u128);
         assert_eq!(asset.to_string(), String::from("mock_token:88888"));
     }
 
@@ -371,7 +371,7 @@ mod tests {
     fn casting() {
         let api = MockApi::default();
 
-        let checked = Asset::cw20(Addr::unchecked("mock_token"), 123456);
+        let checked = Asset::cw20(Addr::unchecked("mock_token"), 123456u128);
         let unchecked: AssetUnchecked = checked.clone().into();
 
         assert_eq!(unchecked.check(&api).unwrap(), checked);
@@ -379,8 +379,8 @@ mod tests {
 
     #[test]
     fn creating_messages() {
-        let token = Asset::cw20(Addr::unchecked("mock_token"), 123456);
-        let coin = Asset::native("uusd", 123456);
+        let token = Asset::cw20(Addr::unchecked("mock_token"), 123456u128);
+        let coin = Asset::native("uusd", 123456u128);
 
         let bin_msg = to_binary(&MockExecuteMsg::MockCommand {}).unwrap();
         let msg = token.send_msg("mock_contract", bin_msg.clone()).unwrap();
@@ -475,21 +475,21 @@ mod tests_terra {
         deps.querier.set_native_tax_cap("uusd", 1000000);
 
         // a relatively small amount that does not hit tax cap
-        let coin = Asset::native("uusd", 1234567);
+        let coin = Asset::native("uusd", 1234567u128);
         let total_amount = coin.add_tax(&deps.as_ref().querier).unwrap().amount;
         let deliverable_amount = coin.deduct_tax(&deps.as_ref().querier).unwrap().amount;
         assert_eq!(total_amount, Uint128::new(1235801));
         assert_eq!(deliverable_amount, Uint128::new(1233333));
 
         // a bigger amount that hits tax cap
-        let coin = Asset::native("uusd", 2000000000);
+        let coin = Asset::native("uusd", 2000000000u128);
         let total_amount = coin.add_tax(&deps.as_ref().querier).unwrap().amount;
         let deliverable_amount = coin.deduct_tax(&deps.as_ref().querier).unwrap().amount;
         assert_eq!(total_amount, Uint128::new(2001000000));
         assert_eq!(deliverable_amount, Uint128::new(1999000000));
 
         // CW20 tokens don't have the tax issue
-        let coin = Asset::cw20(Addr::unchecked("mock_token"), 1234567);
+        let coin = Asset::cw20(Addr::unchecked("mock_token"), 1234567u128);
         let total_amount = coin.add_tax(&deps.as_ref().querier).unwrap().amount;
         let deliverable_amount = coin.deduct_tax(&deps.as_ref().querier).unwrap().amount;
         assert_eq!(total_amount, Uint128::new(1234567));
@@ -520,7 +520,7 @@ mod tests_legacy {
             amount: Uint128::new(69420),
         };
 
-        let asset = Asset::native("uusd", 69420);
+        let asset = Asset::native("uusd", 69420u128);
 
         assert_eq!(asset, Asset::from(&legacy_asset));
         assert_eq!(asset, Asset::from(legacy_asset.clone()));
@@ -543,7 +543,7 @@ mod tests_legacy {
             amount: Uint128::new(69420),
         };
 
-        let asset = Asset::native("uusd", 69420);
+        let asset = Asset::native("uusd", 69420u128);
 
         assert_eq!(legacy_asset_1 == asset, true);
         assert_eq!(legacy_asset_2 == asset, false);

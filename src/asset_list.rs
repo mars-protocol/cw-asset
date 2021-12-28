@@ -206,7 +206,7 @@ mod test_helpers {
         AssetInfo::cw20(Addr::unchecked("mock_token"))
     }
     pub fn mock_list() -> AssetList {
-        AssetList::from(vec![Asset::native("uusd", 69420), Asset::new(mock_token(), 88888)])
+        AssetList::from(vec![Asset::native("uusd", 69420u128), Asset::new(mock_token(), 88888u128)])
     }
 }
 
@@ -242,45 +242,45 @@ mod tests {
         let list = mock_list();
 
         let asset_option = list.find(&uusd());
-        assert_eq!(asset_option, Some(&Asset::new(uusd(), 69420)));
+        assert_eq!(asset_option, Some(&Asset::new(uusd(), 69420u128)));
 
         let asset_option = list.find(&mock_token());
-        assert_eq!(asset_option, Some(&Asset::new(mock_token(), 88888)));
+        assert_eq!(asset_option, Some(&Asset::new(mock_token(), 88888u128)));
     }
 
     #[test]
     fn adding_asset() {
         let mut list = AssetList::new();
 
-        list.add(&Asset::new(uusd(), 69420)).unwrap();
-        list.add(&Asset::new(mock_token(), 88888)).unwrap();
+        list.add(&Asset::new(uusd(), 69420u128)).unwrap();
+        list.add(&Asset::new(mock_token(), 88888u128)).unwrap();
         assert_eq!(list, mock_list());
 
-        list.add(&Asset::new(uusd(), 1)).unwrap();
+        list.add(&Asset::new(uusd(), 1u128)).unwrap();
         let asset = list.find(&uusd()).unwrap();
-        assert_eq!(asset.amount.u128(), 69421);
+        assert_eq!(asset.amount, Uint128::new(69421));
     }
 
     #[test]
     fn deducting_asset() {
         let mut list = mock_list();
 
-        list.deduct(&Asset::new(uusd(), 12345)).unwrap();
+        list.deduct(&Asset::new(uusd(), 12345u128)).unwrap();
         let asset = list.find(&uusd()).unwrap();
-        assert_eq!(asset.amount.u128(), 57075);
+        assert_eq!(asset.amount, Uint128::new(57075));
 
-        list.deduct(&Asset::new(uusd(), 57075)).unwrap();
+        list.deduct(&Asset::new(uusd(), 57075u128)).unwrap();
         let asset_option = list.find(&uusd());
         assert_eq!(asset_option, None);
 
-        let err = list.deduct(&Asset::new(uusd(), 57075));
+        let err = list.deduct(&Asset::new(uusd(), 57075u128));
         assert_eq!(err, Err(StdError::generic_err("not found: uusd")));
 
-        list.deduct(&Asset::new(mock_token(), 12345)).unwrap();
+        list.deduct(&Asset::new(mock_token(), 12345u128)).unwrap();
         let asset = list.find(&mock_token()).unwrap();
-        assert_eq!(asset.amount.u128(), 76543);
+        assert_eq!(asset.amount, Uint128::new(76543));
 
-        let err = list.deduct(&Asset::new(mock_token(), 99999));
+        let err = list.deduct(&Asset::new(mock_token(), 99999u128));
         assert_eq!(
             err,
             Err(StdError::overflow(OverflowError::new(
@@ -334,13 +334,19 @@ mod tests_terra {
         let list_with_tax = list.add_tax(&deps.as_ref().querier).unwrap();
         assert_eq!(
             list_with_tax,
-            AssetList::from(vec![Asset::new(uusd(), 69489), Asset::new(mock_token(), 88888)])
+            AssetList::from(vec![
+                Asset::new(uusd(), 69489u128),
+                Asset::new(mock_token(), 88888u128)
+            ])
         );
 
         let list_after_tax = list.deduct_tax(&deps.as_ref().querier).unwrap();
         assert_eq!(
             list_after_tax,
-            AssetList::from(vec![Asset::new(uusd(), 69350), Asset::new(mock_token(), 88888)])
+            AssetList::from(vec![
+                Asset::new(uusd(), 69350u128),
+                Asset::new(mock_token(), 88888u128)
+            ])
         );
     }
 }
