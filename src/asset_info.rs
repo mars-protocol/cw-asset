@@ -131,6 +131,39 @@ impl From<&astroport::asset::AssetInfo> for AssetInfo {
     }
 }
 
+#[cfg(feature = "legacy")]
+impl std::cmp::PartialEq<AssetInfo> for astroport::asset::AssetInfo {
+    fn eq(&self, other: &AssetInfo) -> bool {
+        match self {
+            astroport::asset::AssetInfo::Token {
+                contract_addr,
+            } => {
+                let self_contract_addr = contract_addr;
+                match other {
+                    AssetInfo::Cw20(contract_addr) => self_contract_addr == contract_addr,
+                    _ => false,
+                }
+            }
+            astroport::asset::AssetInfo::NativeToken {
+                denom,
+            } => {
+                let self_denom = denom;
+                match other {
+                    AssetInfo::Native(denom) => self_denom == denom,
+                    _ => false,
+                }
+            }
+        }
+    }
+}
+
+#[cfg(feature = "legacy")]
+impl std::cmp::PartialEq<astroport::asset::AssetInfo> for AssetInfo {
+    fn eq(&self, other: &astroport::asset::AssetInfo) -> bool {
+        other == self
+    }
+}
+
 #[cfg(test)]
 mod test {
     use super::*;
@@ -206,5 +239,35 @@ mod tests_legacy {
         assert_eq!(info, AssetInfo::from(legacy_info.clone()));
         assert_eq!(legacy_info, astroport::asset::AssetInfo::from(&info));
         assert_eq!(legacy_info, astroport::asset::AssetInfo::from(info));
+    }
+
+    #[test]
+    fn comparing() {
+        let legacy_info_1 = astroport::asset::AssetInfo::NativeToken {
+            denom: String::from("uusd"),
+        };
+        let legacy_info_2 = astroport::asset::AssetInfo::NativeToken {
+            denom: String::from("uluna"),
+        };
+        let legacy_info_3 = astroport::asset::AssetInfo::Token {
+            contract_addr: Addr::unchecked("astro_token"),
+        };
+        let legacy_info_4 = astroport::asset::AssetInfo::Token {
+            contract_addr: Addr::unchecked("mars_token"),
+        };
+
+        let info_1 = AssetInfo::native("uusd");
+        let info_2 = AssetInfo::native("uluna");
+        let info_3 = AssetInfo::cw20(Addr::unchecked("astro_token"));
+        let info_4 = AssetInfo::cw20(Addr::unchecked("mars_token"));
+
+        assert_eq!(legacy_info_1 == info_1, true);
+        assert_eq!(legacy_info_2 == info_1, false);
+        assert_eq!(legacy_info_2 == info_2, true);
+        assert_eq!(legacy_info_3 == info_1, false);
+        assert_eq!(legacy_info_3 == info_3, true);
+        assert_eq!(legacy_info_4 == info_3, false);
+        assert_eq!(legacy_info_4 == info_4, true);
+        assert_eq!(legacy_info_1 == info_4, false);
     }
 }

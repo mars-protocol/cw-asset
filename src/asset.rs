@@ -291,6 +291,20 @@ impl From<&astroport::asset::Asset> for Asset {
     }
 }
 
+#[cfg(feature = "legacy")]
+impl std::cmp::PartialEq<Asset> for astroport::asset::Asset {
+    fn eq(&self, other: &Asset) -> bool {
+        self.info == other.info && self.amount == other.amount
+    }
+}
+
+#[cfg(feature = "legacy")]
+impl std::cmp::PartialEq<astroport::asset::Asset> for Asset {
+    fn eq(&self, other: &astroport::asset::Asset) -> bool {
+        other == self
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -487,12 +501,22 @@ mod tests_terra {
 mod tests_legacy {
     use super::*;
 
+    fn legacy_uusd() -> astroport::asset::AssetInfo {
+        astroport::asset::AssetInfo::NativeToken {
+            denom: String::from("uusd"),
+        }
+    }
+
+    fn legacy_uluna() -> astroport::asset::AssetInfo {
+        astroport::asset::AssetInfo::NativeToken {
+            denom: String::from("uluna"),
+        }
+    }
+
     #[test]
     fn casting_legacy() {
         let legacy_asset = astroport::asset::Asset {
-            info: astroport::asset::AssetInfo::NativeToken {
-                denom: String::from("uusd"),
-            },
+            info: legacy_uusd(),
             amount: Uint128::new(69420),
         };
 
@@ -502,5 +526,27 @@ mod tests_legacy {
         assert_eq!(asset, Asset::from(legacy_asset.clone()));
         assert_eq!(legacy_asset, astroport::asset::Asset::from(&asset));
         assert_eq!(legacy_asset, astroport::asset::Asset::from(asset));
+    }
+
+    #[test]
+    fn comparing() {
+        let legacy_asset_1 = astroport::asset::Asset {
+            info: legacy_uusd(),
+            amount: Uint128::new(69420),
+        };
+        let legacy_asset_2 = astroport::asset::Asset {
+            info: legacy_uusd(),
+            amount: Uint128::new(88888),
+        };
+        let legacy_asset_3 = astroport::asset::Asset {
+            info: legacy_uluna(),
+            amount: Uint128::new(69420),
+        };
+
+        let asset = Asset::native("uusd", 69420);
+
+        assert_eq!(legacy_asset_1 == asset, true);
+        assert_eq!(legacy_asset_2 == asset, false);
+        assert_eq!(legacy_asset_3 == asset, false);
     }
 }
