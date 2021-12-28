@@ -14,6 +14,13 @@ use super::asset_info::AssetInfo;
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct AssetListBase<T>(Vec<AssetBase<T>>);
 
+#[allow(clippy::derivable_impls)] // clippy says `Default` can be derived here, but actually it can't
+impl<T> Default for AssetListBase<T> {
+    fn default() -> Self {
+        Self(vec![])
+    }
+}
+
 pub type AssetListUnchecked = AssetListBase<String>;
 pub type AssetList = AssetListBase<Addr>;
 
@@ -39,13 +46,6 @@ impl fmt::Display for AssetList {
             "{}",
             self.0.iter().map(|asset| asset.to_string()).collect::<Vec<String>>().join(",")
         )
-    }
-}
-
-#[allow(clippy::derivable_impls)] // clippy says `Default` can be derived here, but actually it can't
-impl Default for AssetList {
-    fn default() -> Self {
-        Self(vec![])
     }
 }
 
