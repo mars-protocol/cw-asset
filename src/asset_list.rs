@@ -89,22 +89,6 @@ impl AssetList {
         self.0.len()
     }
 
-    /// Apply a mutation on each of the asset
-    pub fn map<F: FnMut(&Asset) -> Asset>(&mut self, f: F) {
-        self.0 = self.0.iter().map(f).collect();
-    }
-
-    /// Apply a mutation that may or may not succeed on each of the asset
-    pub fn may_map<F: FnMut(&Asset) -> StdResult<Asset>>(&mut self, f: F) -> StdResult<()> {
-        self.0 = self.0.iter().map(f).collect::<StdResult<Vec<Asset>>>()?;
-        Ok(())
-    }
-
-    /// Removes all assets in the list that has zero amount
-    pub fn purge(&mut self) {
-        self.0.retain(|asset| !asset.amount.is_zero());
-    }
-
     /// Find an asset in the list that matches the provided asset info
     ///
     /// Return `Some(&asset)` if found, where `&asset` is a reference to the asset found; `None` if
@@ -113,11 +97,23 @@ impl AssetList {
         self.0.iter().find(|asset| asset.info == *info)
     }
 
+    /// Apply a mutation on each of the asset
+    pub fn apply<F: FnMut(&mut Asset)>(&mut self, f: F) -> &mut Self {
+        self.0.iter_mut().for_each(f);
+        self
+    }
+
+    /// Removes all assets in the list that has zero amount
+    pub fn purge(&mut self) -> &mut Self {
+        self.0.retain(|asset| !asset.amount.is_zero());
+        self
+    }
+
     /// Add a new asset to the list
     ///
     /// If asset of the same kind already exists in the list, then increment its amount; if not,
     /// append to the end of the list.
-    pub fn add(&mut self, asset_to_add: &Asset) -> StdResult<()> {
+    pub fn add(&mut self, asset_to_add: &Asset) -> StdResult<&mut Self> {
         match self.0.iter_mut().find(|asset| asset.info == asset_to_add.info) {
             Some(asset) => {
                 asset.amount = asset.amount.checked_add(asset_to_add.amount)?;
@@ -126,10 +122,7 @@ impl AssetList {
                 self.0.push(asset_to_add.clone());
             }
         }
-
-        self.purge();
-
-        Ok(())
+        Ok(self.purge())
     }
 
     /// Deduct an asset from the list
@@ -138,7 +131,7 @@ impl AssetList {
     /// deduct the amount from the asset; ifnot, throw an error.
     ///
     /// If an asset's amount is reduced to zero, it is purged from the list.
-    pub fn deduct(&mut self, asset_to_deduct: &Asset) -> StdResult<()> {
+    pub fn deduct(&mut self, asset_to_deduct: &Asset) -> StdResult<&mut Self> {
         match self.0.iter_mut().find(|asset| asset.info == asset_to_deduct.info) {
             Some(asset) => {
                 asset.amount = asset.amount.checked_sub(asset_to_deduct.amount)?;
@@ -147,10 +140,7 @@ impl AssetList {
                 return Err(StdError::generic_err(format!("not found: {}", asset_to_deduct.info)))
             }
         }
-
-        self.purge();
-
-        Ok(())
+        Ok(self.purge())
     }
 
     /// Generate a transfer messages for every asset in the list
@@ -167,17 +157,20 @@ impl AssetList {
     /// Execute `add_tax` to every asset in the list; returns a new `AssetList` instance with the
     /// updated amounts
     pub fn add_tax(&self, querier: &QuerierWrapper) -> StdResult<AssetList> {
-        let mut clone = self.clone();
-        clone.may_map(|asset| asset.add_tax(querier))?;
-        Ok(clone)
+        Ok(Self(
+            self.0.iter().map(|asset| asset.add_tax(querier)).collect::<StdResult<Vec<Asset>>>()?,
+        ))
     }
 
     /// Execute `deduct_tax` to every asset in the list; returns a new `AssetList` instance with the
     /// updated amounts
     pub fn deduct_tax(&self, querier: &QuerierWrapper) -> StdResult<AssetList> {
-        let mut clone = self.clone();
-        clone.may_map(|asset| asset.deduct_tax(querier))?;
-        Ok(clone)
+        Ok(Self(
+            self.0
+                .iter()
+                .map(|asset| asset.deduct_tax(querier))
+                .collect::<StdResult<Vec<Asset>>>()?,
+        ))
     }
 }
 
@@ -207,12 +200,18 @@ mod test_helpers {
     use super::super::asset::Asset;
     use super::*;
 
+    pub fn uluna() -> AssetInfo {
+        AssetInfo::native("uluna")
+    }
+
     pub fn uusd() -> AssetInfo {
         AssetInfo::native("uusd")
     }
+
     pub fn mock_token() -> AssetInfo {
         AssetInfo::cw20(Addr::unchecked("mock_token"))
     }
+
     pub fn mock_list() -> AssetList {
         AssetList::from(vec![Asset::native("uusd", 69420u128), Asset::new(mock_token(), 88888u128)])
     }
@@ -221,11 +220,12 @@ mod test_helpers {
 #[cfg(test)]
 mod tests {
     use super::super::asset::Asset;
-    use super::test_helpers::{mock_list, mock_token, uusd};
+    use super::test_helpers::{mock_list, mock_token, uluna, uusd};
     use super::*;
     use cosmwasm_std::testing::MockApi;
     use cosmwasm_std::{
-        to_binary, BankMsg, Coin, CosmosMsg, OverflowError, OverflowOperation, Uint128, WasmMsg,
+        to_binary, BankMsg, Coin, CosmosMsg, Decimal, OverflowError, OverflowOperation, Uint128,
+        WasmMsg,
     };
     use cw20::Cw20ExecuteMsg;
 
@@ -246,7 +246,7 @@ mod tests {
     }
 
     #[test]
-    fn finding_asset() {
+    fn finding() {
         let list = mock_list();
 
         let asset_option = list.find(&uusd());
@@ -257,12 +257,25 @@ mod tests {
     }
 
     #[test]
-    fn adding_asset() {
-        let mut list = AssetList::new();
+    fn applying() {
+        let mut list = mock_list();
 
-        list.add(&Asset::new(uusd(), 69420u128)).unwrap();
-        list.add(&Asset::new(mock_token(), 88888u128)).unwrap();
-        assert_eq!(list, mock_list());
+        let half = Decimal::from_ratio(1u128, 2u128);
+        list.apply(|asset: &mut Asset| asset.amount = asset.amount * half);
+        assert_eq!(
+            list,
+            AssetList::from(vec![
+                Asset::native("uusd", 34710u128),
+                Asset::new(mock_token(), 44444u128)
+            ])
+        );
+    }
+
+    #[test]
+    fn adding() {
+        let mut list = mock_list();
+
+        list.add(&Asset::new(uluna(), 1u128)).unwrap();
 
         list.add(&Asset::new(uusd(), 1u128)).unwrap();
         let asset = list.find(&uusd()).unwrap();
@@ -270,7 +283,7 @@ mod tests {
     }
 
     #[test]
-    fn deducting_asset() {
+    fn deducting() {
         let mut list = mock_list();
 
         list.deduct(&Asset::new(uusd(), 12345u128)).unwrap();
