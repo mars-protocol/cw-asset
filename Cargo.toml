@@ -4,7 +4,7 @@ description = "Helper library for interacting with Cosmos assets (SDK coins and 
 version = "0.3.0"
 authors = ["larry <larry@delphidigital.io>"]
 edition = "2018"
-license = "MIT"
+license = "GPL-v3-or-later"
 repository = "https://github.com/mars-protocol/cw-asset"
 
 [lib]
