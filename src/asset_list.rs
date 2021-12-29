@@ -125,6 +125,14 @@ impl AssetList {
         Ok(self.purge())
     }
 
+    /// Add multiple new assets to the list
+    pub fn add_many(&mut self, assets_to_add: &AssetList) -> StdResult<&mut Self> {
+        for asset in &assets_to_add.0 {
+            self.add(asset)?;
+        }
+        Ok(self)
+    }
+
     /// Deduct an asset from the list
     ///
     /// The asset of the same kind and equal or greater amount must already exist in the list. If so,
@@ -141,6 +149,14 @@ impl AssetList {
             }
         }
         Ok(self.purge())
+    }
+
+    /// Deduct multiple assets from the list
+    pub fn deduct_many(&mut self, assets_to_deduct: &AssetList) -> StdResult<&mut Self> {
+        for asset in &assets_to_deduct.0 {
+            self.deduct(asset)?;
+        }
+        Ok(self)
     }
 
     /// Generate a transfer messages for every asset in the list
@@ -275,11 +291,22 @@ mod tests {
     fn adding() {
         let mut list = mock_list();
 
-        list.add(&Asset::new(uluna(), 1u128)).unwrap();
+        list.add(&Asset::new(uluna(), 12345u128)).unwrap();
+        let asset = list.find(&uluna()).unwrap();
+        assert_eq!(asset.amount, Uint128::new(12345));
 
         list.add(&Asset::new(uusd(), 1u128)).unwrap();
         let asset = list.find(&uusd()).unwrap();
         assert_eq!(asset.amount, Uint128::new(69421));
+    }
+
+    #[test]
+    fn adding_many() {
+        let mut list = mock_list();
+        list.add_many(&mock_list()).unwrap();
+
+        let expected = mock_list().apply(|a| a.amount = a.amount * Uint128::new(2)).clone();
+        assert_eq!(list, expected);
     }
 
     #[test]
@@ -310,6 +337,13 @@ mod tests {
                 Uint128::new(99999)
             )))
         );
+    }
+
+    #[test]
+    fn deducting_many() {
+        let mut list = mock_list();
+        list.deduct_many(&mock_list()).unwrap();
+        assert_eq!(list, AssetList::new());
     }
 
     #[test]
