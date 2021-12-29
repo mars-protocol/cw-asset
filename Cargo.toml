@@ -5,7 +5,7 @@ version = "0.3.0"
 authors = ["larry <larry@delphidigital.io>"]
 edition = "2018"
 license = "MIT"
-repository = "https://github.com/larry0x/cw-asset"
+repository = "https://github.com/mars-protocol/cw-asset"
 
 [lib]
 doctest = false # do not run doc tests
