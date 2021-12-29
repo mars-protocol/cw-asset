@@ -185,7 +185,7 @@ impl Asset {
 
 #[cfg(feature = "terra")]
 impl Asset {
-    /// Compute total cost (including tax) if the the asset is to be transferred
+    /// Update the asset amount to include the necessary tax if the the asset is to be transferred
     ///
     /// **Usage:**
     /// The following code calculates to total cost for sending 100 UST. For example, if the tax
@@ -194,9 +194,9 @@ impl Asset {
     ///
     /// ```rust
     /// let asset = Asset::native("uusd", 100000000);
-    /// let assert_with_tax = asset.add_tax(&deps.querier)?;
+    /// asset.add_tax(&deps.querier)?;
     /// ```
-    pub fn add_tax(&self, querier: &QuerierWrapper) -> StdResult<Asset> {
+    pub fn add_tax(&mut self, querier: &QuerierWrapper) -> StdResult<&mut Self> {
         let tax = match &self.info {
             AssetInfo::Cw20(_) => Uint128::zero(),
             AssetInfo::Native(denom) => {
@@ -211,14 +211,11 @@ impl Asset {
                 }
             }
         };
-
-        Ok(Asset {
-            info: self.info.clone(),
-            amount: self.amount + tax,
-        })
+        self.amount = self.amount.checked_add(tax)?;
+        Ok(self)
     }
 
-    /// Compute the deliverable amount (after tax) if the asset is to be transferred
+    /// Update the asset amount to exclude the necessary tax if the asset is to be transferred
     ///
     /// **Usage:**
     /// The following code calculates the deliverable amount if 100 UST is to be transferred. Due to
@@ -226,9 +223,9 @@ impl Asset {
     ///
     /// ```rust
     /// let asset = Asset::native("uusd", 100000000);
-    /// let asset_after_tax = asset.deduct_tax(&deps.querier)?;
+    /// asset.deduct_tax(&deps.querier)?;
     /// ```
-    pub fn deduct_tax(&self, querier: &QuerierWrapper) -> StdResult<Asset> {
+    pub fn deduct_tax(&mut self, querier: &QuerierWrapper) -> StdResult<&mut Self> {
         let tax = match &self.info {
             AssetInfo::Cw20(_) => Uint128::zero(),
             AssetInfo::Native(denom) => {
@@ -249,11 +246,8 @@ impl Asset {
                 }
             }
         };
-
-        Ok(Asset {
-            info: self.info.clone(),
-            amount: self.amount.checked_sub(tax)?,
-        })
+        self.amount = self.amount.checked_sub(tax)?;
+        Ok(self)
     }
 }
 
@@ -475,25 +469,30 @@ mod tests_terra {
         deps.querier.set_native_tax_cap("uusd", 1000000);
 
         // a relatively small amount that does not hit tax cap
-        let coin = Asset::native("uusd", 1234567u128);
-        let total_amount = coin.add_tax(&deps.as_ref().querier).unwrap().amount;
-        let deliverable_amount = coin.deduct_tax(&deps.as_ref().querier).unwrap().amount;
-        assert_eq!(total_amount, Uint128::new(1235801));
-        assert_eq!(deliverable_amount, Uint128::new(1233333));
+        let mut asset = Asset::native("uusd", 1234567u128);
+        asset.deduct_tax(&deps.as_ref().querier).unwrap();
+        assert_eq!(asset.amount, Uint128::new(1233333));
+
+        asset.add_tax(&deps.as_ref().querier).unwrap();
+        assert_eq!(asset.amount, Uint128::new(1234566));
 
         // a bigger amount that hits tax cap
-        let coin = Asset::native("uusd", 2000000000u128);
-        let total_amount = coin.add_tax(&deps.as_ref().querier).unwrap().amount;
-        let deliverable_amount = coin.deduct_tax(&deps.as_ref().querier).unwrap().amount;
-        assert_eq!(total_amount, Uint128::new(2001000000));
-        assert_eq!(deliverable_amount, Uint128::new(1999000000));
+        let mut asset = Asset::native("uusd", 2000000000u128);
+
+        asset.deduct_tax(&deps.as_ref().querier).unwrap();
+        assert_eq!(asset.amount, Uint128::new(1999000000));
+
+        asset.add_tax(&deps.as_ref().querier).unwrap();
+        assert_eq!(asset.amount, Uint128::new(2000000000));
 
         // CW20 tokens don't have the tax issue
-        let coin = Asset::cw20(Addr::unchecked("mock_token"), 1234567u128);
-        let total_amount = coin.add_tax(&deps.as_ref().querier).unwrap().amount;
-        let deliverable_amount = coin.deduct_tax(&deps.as_ref().querier).unwrap().amount;
-        assert_eq!(total_amount, Uint128::new(1234567));
-        assert_eq!(deliverable_amount, Uint128::new(1234567));
+        let mut asset = Asset::cw20(Addr::unchecked("mock_token"), 1234567u128);
+
+        asset.deduct_tax(&deps.as_ref().querier).unwrap();
+        assert_eq!(asset.amount, Uint128::new(1234567));
+
+        asset.add_tax(&deps.as_ref().querier).unwrap();
+        assert_eq!(asset.amount, Uint128::new(1234567));
     }
 }
 

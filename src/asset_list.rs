@@ -170,23 +170,20 @@ impl AssetList {
 
 #[cfg(feature = "terra")]
 impl AssetList {
-    /// Execute `add_tax` to every asset in the list; returns a new `AssetList` instance with the
-    /// updated amounts
-    pub fn add_tax(&self, querier: &QuerierWrapper) -> StdResult<AssetList> {
-        Ok(Self(
-            self.0.iter().map(|asset| asset.add_tax(querier)).collect::<StdResult<Vec<Asset>>>()?,
-        ))
+    /// Execute `add_tax` to every asset in the list
+    pub fn add_tax(&mut self, querier: &QuerierWrapper) -> StdResult<&mut Self> {
+        for asset in &mut self.0 {
+            asset.add_tax(querier)?;
+        }
+        Ok(self)
     }
 
-    /// Execute `deduct_tax` to every asset in the list; returns a new `AssetList` instance with the
-    /// updated amounts
-    pub fn deduct_tax(&self, querier: &QuerierWrapper) -> StdResult<AssetList> {
-        Ok(Self(
-            self.0
-                .iter()
-                .map(|asset| asset.deduct_tax(querier))
-                .collect::<StdResult<Vec<Asset>>>()?,
-        ))
+    /// Execute `deduct_tax` to every asset in the list
+    pub fn deduct_tax(&mut self, querier: &QuerierWrapper) -> StdResult<&mut Self> {
+        for asset in &mut self.0 {
+            asset.deduct_tax(querier)?;
+        }
+        Ok(self)
     }
 }
 
@@ -384,22 +381,22 @@ mod tests_terra {
         deps.querier.set_native_tax_rate(Decimal::from_ratio(1u128, 1000u128)); // 0.1%
         deps.querier.set_native_tax_cap("uusd", 1000000);
 
-        let list = mock_list();
+        let mut list = mock_list();
 
-        let list_with_tax = list.add_tax(&deps.as_ref().querier).unwrap();
+        list.deduct_tax(&deps.as_ref().querier).unwrap();
         assert_eq!(
-            list_with_tax,
+            list,
             AssetList::from(vec![
-                Asset::new(uusd(), 69489u128),
+                Asset::new(uusd(), 69350u128),
                 Asset::new(mock_token(), 88888u128)
             ])
         );
 
-        let list_after_tax = list.deduct_tax(&deps.as_ref().querier).unwrap();
+        list.add_tax(&deps.as_ref().querier).unwrap();
         assert_eq!(
-            list_after_tax,
+            list,
             AssetList::from(vec![
-                Asset::new(uusd(), 69350u128),
+                Asset::new(uusd(), 69419u128),
                 Asset::new(mock_token(), 88888u128)
             ])
         );
