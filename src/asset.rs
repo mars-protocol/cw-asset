@@ -22,6 +22,32 @@ pub struct AssetBase<T> {
     pub amount: Uint128,
 }
 
+impl<T> AssetBase<T> {
+    /// Create a new `AssetBase` instance based on given asset info and amount
+    pub fn new<B: Into<Uint128>>(info: AssetInfoBase<T>, amount: B) -> Self {
+        Self {
+            info,
+            amount: amount.into(),
+        }
+    }
+
+    /// Create a new `AssetBase` instance representing a CW20 token of given contract address and amount
+    pub fn cw20<A: Into<T>, B: Into<Uint128>>(contract_addr: A, amount: B) -> Self {
+        Self {
+            info: AssetInfoBase::cw20(contract_addr),
+            amount: amount.into(),
+        }
+    }
+
+    /// Create a new `AssetBase` instance representing a native coin of given denom
+    pub fn native<A: Into<String>, B: Into<Uint128>>(denom: A, amount: B) -> Self {
+        Self {
+            info: AssetInfoBase::native(denom),
+            amount: amount.into(),
+        }
+    }
+}
+
 pub type AssetUnchecked = AssetBase<String>;
 pub type Asset = AssetBase<Addr>;
 
@@ -66,30 +92,6 @@ impl From<&Coin> for Asset {
 }
 
 impl Asset {
-    /// Create a new `AssetBase` instance based on given asset info and amount
-    pub fn new<B: Into<Uint128>>(info: AssetInfo, amount: B) -> Self {
-        Self {
-            info,
-            amount: amount.into(),
-        }
-    }
-
-    /// Create a new `AssetBase` instance representing a CW20 token of given contract address and amount
-    pub fn cw20<B: Into<Uint128>>(contract_addr: Addr, amount: B) -> Self {
-        Self {
-            info: AssetInfoBase::cw20(contract_addr),
-            amount: amount.into(),
-        }
-    }
-
-    /// Create a new `AssetBase` instance representing a native coin of given denom
-    pub fn native<A: Into<String>, B: Into<Uint128>>(denom: A, amount: B) -> Self {
-        Self {
-            info: AssetInfoBase::native(denom),
-            amount: amount.into(),
-        }
-    }
-
     /// Generate a message that sends a CW20 token to the specified recipient with a binary payload
     ///
     /// NOTE: Only works for CW20 tokens

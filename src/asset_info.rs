@@ -16,6 +16,18 @@ pub enum AssetInfoBase<T> {
     Native(String), // the native token's denom
 }
 
+impl<T> AssetInfoBase<T> {
+    /// Create a new `AssetInfoBase` instance representing a CW20 token of given contract address
+    pub fn cw20<A: Into<T>>(contract_addr: A) -> Self {
+        AssetInfoBase::Cw20(contract_addr.into())
+    }
+
+    /// Create a new `AssetInfoBase` instance representing a native token of given denom
+    pub fn native<A: Into<String>>(denom: A) -> Self {
+        AssetInfoBase::Native(denom.into())
+    }
+}
+
 pub type AssetInfoUnchecked = AssetInfoBase<String>;
 pub type AssetInfo = AssetInfoBase<Addr>;
 
@@ -50,16 +62,6 @@ impl fmt::Display for AssetInfo {
 }
 
 impl AssetInfo {
-    /// Create a new `AssetInfoBase` instance representing a CW20 token of given contract address
-    pub fn cw20<A: Into<Addr>>(contract_addr: A) -> Self {
-        AssetInfo::Cw20(contract_addr.into())
-    }
-
-    /// Create a new `AssetInfoBase` instance representing a native token of given denom
-    pub fn native<A: Into<String>>(denom: A) -> Self {
-        AssetInfo::Native(denom.into())
-    }
-
     /// Query an address' balance of the asset
     pub fn query_balance<T: Into<String>>(
         &self,
