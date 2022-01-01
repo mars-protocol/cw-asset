@@ -145,7 +145,9 @@ impl AssetList {
                 asset.amount = asset.amount.checked_sub(asset_to_deduct.amount)?;
             }
             None => {
-                return Err(StdError::generic_err(format!("not found: {}", asset_to_deduct.info)))
+                return Err(StdError::generic_err(
+                    format!("not found in asset list: {}", asset_to_deduct.info)
+                ));
             }
         }
         Ok(self.purge())
@@ -319,7 +321,7 @@ mod tests {
         assert_eq!(asset_option, None);
 
         let err = list.deduct(&Asset::new(uusd(), 57075u128));
-        assert_eq!(err, Err(StdError::generic_err("not found: uusd")));
+        assert_eq!(err, Err(StdError::generic_err("not found in asset list: uusd")));
 
         list.deduct(&Asset::new(mock_token(), 12345u128)).unwrap();
         let asset = list.find(&mock_token()).unwrap();
