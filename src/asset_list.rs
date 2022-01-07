@@ -5,9 +5,6 @@ use cosmwasm_std::{Addr, Api, Coin, CosmosMsg, StdError, StdResult};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
-#[cfg(feature = "terra")]
-use cosmwasm_std::QuerierWrapper;
-
 use super::asset::{Asset, AssetBase};
 use super::asset_info::AssetInfo;
 
@@ -366,41 +363,6 @@ mod tests {
                     funds: vec![]
                 })
             ]
-        );
-    }
-}
-
-#[cfg(all(test, feature = "terra"))]
-mod tests_terra {
-    use super::test_helpers::{mock_list, mock_token, uusd};
-    use super::*;
-    use crate::testing::mock_dependencies;
-    use cosmwasm_std::Decimal;
-
-    #[test]
-    fn handling_taxes() {
-        let mut deps = mock_dependencies();
-        deps.querier.set_native_tax_rate(Decimal::from_ratio(1u128, 1000u128)); // 0.1%
-        deps.querier.set_native_tax_cap("uusd", 1000000);
-
-        let mut list = mock_list();
-
-        list.deduct_tax(&deps.as_ref().querier).unwrap();
-        assert_eq!(
-            list,
-            AssetList::from(vec![
-                Asset::new(uusd(), 69350u128),
-                Asset::new(mock_token(), 88888u128)
-            ])
-        );
-
-        list.add_tax(&deps.as_ref().querier).unwrap();
-        assert_eq!(
-            list,
-            AssetList::from(vec![
-                Asset::new(uusd(), 69419u128),
-                Asset::new(mock_token(), 88888u128)
-            ])
         );
     }
 }
