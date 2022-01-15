@@ -33,11 +33,11 @@ impl From<AssetList> for AssetListUnchecked {
 impl AssetListUnchecked {
     /// Validate data contained in an _unchecked_ **asset list** instance, return a new _checked_
     /// **asset list** instance
-    /// 
+    ///
     /// ```rust
     /// use cosmwasm_std::{Addr, Api, StdResult};
     /// use cw_asset::{Asset, AssetList, AssetUnchecked, AssetListUnchecked};
-    /// 
+    ///
     /// fn validate_assets(api: &dyn Api, list_unchecked: &AssetListUnchecked) {
     ///     match list_unchecked.check(api) {
     ///         Ok(list) => println!("asset list is valid: {}", list.to_string()),
@@ -100,10 +100,10 @@ impl From<&[Coin]> for AssetList {
 
 impl AssetList {
     /// Create a new, empty asset list
-    /// 
+    ///
     /// ```rust
     /// use cw_asset::AssetList;
-    /// 
+    ///
     /// let list = AssetList::new();
     /// let len = list.len();  // should be zero
     /// ```
@@ -112,15 +112,15 @@ impl AssetList {
     }
 
     /// Return a copy of the underlying vector
-    /// 
+    ///
     /// ```rust
     /// use cw_asset::{Asset, AssetList};
-    /// 
+    ///
     /// let list = AssetList::from(vec![
     ///     Asset::native("uluna", 12345u128),
     ///     Asset::native("uusd", 67890u128),
     /// ]);
-    /// 
+    ///
     /// let vec: Vec<Asset> = list.to_vec();
     /// ```
     pub fn to_vec(&self) -> Vec<Asset> {
@@ -128,15 +128,15 @@ impl AssetList {
     }
 
     /// Return length of the asset list
-    /// 
+    ///
     /// ```rust
     /// use cw_asset::{Asset, AssetList};
-    /// 
+    ///
     /// let list = AssetList::from(vec![
     ///     Asset::native("uluna", 12345u128),
     ///     Asset::native("uusd", 67890u128),
     /// ]);
-    /// 
+    ///
     /// let len = list.len();  // should be two
     /// ```
     pub fn len(&self) -> usize {
@@ -147,14 +147,14 @@ impl AssetList {
     ///
     /// Return `Some(&asset)` if found, where `&asset` is a reference to the asset found; `None` if
     /// not found.
-    /// 
-    /// A case where is method is useful is to find how much asset the user sent along with a 
+    ///
+    /// A case where is method is useful is to find how much asset the user sent along with a
     /// message:
-    /// 
+    ///
     /// ```rust
     /// use cosmwasm_std::MessageInfo;
     /// use cw_asset::{AssetInfo, AssetList};
-    /// 
+    ///
     /// fn find_uusd_received_amount(info: &MessageInfo) {
     ///     let list = AssetList::from(&info.funds);
     ///     match list.find(&AssetInfo::native("uusd")) {
@@ -168,18 +168,18 @@ impl AssetList {
     }
 
     /// Apply a mutation on each of the asset
-    /// 
+    ///
     /// An example case where this is useful is to scale the amount of each asset in the list by a
     /// certain factor:
-    /// 
+    ///
     /// ```rust
     /// use cw_asset::{Asset, AssetInfo, AssetList};
-    /// 
+    ///
     /// let mut list = AssetList::from(vec![
     ///     Asset::native("uluna", 12345u128),
     ///     Asset::native("uusd", 67890u128),
     /// ]);
-    /// 
+    ///
     /// let list_halved = list.apply(|a| a.amount = a.amount.multiply_ratio(1u128, 2u128));
     /// ```
     pub fn apply<F: FnMut(&mut Asset)>(&mut self, f: F) -> &mut Self {
@@ -188,16 +188,16 @@ impl AssetList {
     }
 
     /// Removes all assets in the list that has zero amount
-    /// 
+    ///
     /// ```rust
     /// use cw_asset::{Asset, AssetList};
-    /// 
+    ///
     /// let mut list = AssetList::from(vec![
     ///     Asset::native("uluna", 12345u128),
     ///     Asset::native("uusd", 0u128),
     /// ]);
     /// let mut len = list.len(); // should be two
-    /// 
+    ///
     /// list.purge();
     /// len = list.len();  // should be one
     /// ```
@@ -210,23 +210,23 @@ impl AssetList {
     ///
     /// If asset of the same kind already exists in the list, then increment its amount; if not,
     /// append to the end of the list.
-    /// 
+    ///
     /// NOTE: `purge` is automatically performed following the addition, so adding an asset with
     /// zero amount has no effect.
-    /// 
+    ///
     /// ```rust
     /// use cw_asset::{Asset, AssetInfo, AssetList};
-    /// 
+    ///
     /// let mut list = AssetList::from(vec![
     ///     Asset::native("uluna", 12345u128),
     /// ]);
-    /// 
+    ///
     /// list.add(&Asset::native("uusd", 67890u128));
     /// let mut len = list.len();  // should be two
-    /// 
+    ///
     /// list.add(&Asset::native("uluna", 11111u128));
     /// len = list.len();  // should still be two
-    /// 
+    ///
     /// let uluna_amount = list
     ///     .find(&AssetInfo::native("uluna"))
     ///     .unwrap()
@@ -245,24 +245,24 @@ impl AssetList {
     }
 
     /// Add multiple new assets to the list
-    /// 
+    ///
     /// ```rust
     /// use cw_asset::{Asset, AssetInfo, AssetList};
-    /// 
+    ///
     /// let mut list = AssetList::from(vec![
     ///     Asset::native("uluna", 12345u128),
     /// ]);
-    /// 
+    ///
     /// list.add_many(&AssetList::from(vec![
     ///     Asset::native("uusd", 67890u128),
     ///     Asset::native("uluna", 11111u128),
     /// ]));
-    /// 
+    ///
     /// let uusd_amount = list
     ///     .find(&AssetInfo::native("uusd"))
     ///     .unwrap()
     ///     .amount;  // should be 67890
-    /// 
+    ///
     /// let uluna_amount = list
     ///     .find(&AssetInfo::native("uluna"))
     ///     .unwrap()
@@ -282,23 +282,23 @@ impl AssetList {
     ///
     /// NOTE: `purge` is automatically performed following the addition. Therefore, if an asset's
     /// amount is reduced to zero, it will be removed from the list.
-    /// 
+    ///
     /// ```
     /// use cw_asset::{Asset, AssetInfo, AssetList};
-    /// 
+    ///
     /// let mut list = AssetList::from(vec![
     ///     Asset::native("uluna", 12345u128),
     /// ]);
-    /// 
+    ///
     /// list.deduct(&Asset::native("uluna", 10000u128)).unwrap();
-    /// 
+    ///
     /// let uluna_amount = list
     ///     .find(&AssetInfo::native("uluna"))
     ///     .unwrap()
     ///     .amount;  // should have reduced to 2345
-    /// 
+    ///
     /// list.deduct(&Asset::native("uluna", 2345u128));
-    /// 
+    ///
     /// let len = list.len();  // should be zero, as uluna is purged from the list
     /// ```
     pub fn deduct(&mut self, asset_to_deduct: &Asset) -> StdResult<&mut Self> {
@@ -316,25 +316,25 @@ impl AssetList {
     }
 
     /// Deduct multiple assets from the list
-    /// 
+    ///
     /// ```rust
     /// use cw_asset::{Asset, AssetInfo, AssetList};
-    /// 
+    ///
     /// let mut list = AssetList::from(vec![
     ///     Asset::native("uluna", 12345u128),
     ///     Asset::native("uusd", 67890u128),
     /// ]);
-    /// 
+    ///
     /// list.deduct_many(&AssetList::from(vec![
     ///     Asset::native("uluna", 2345u128),
     ///     Asset::native("uusd", 67890u128),
     /// ])).unwrap();
-    /// 
+    ///
     /// let uluna_amount = list
     ///     .find(&AssetInfo::native("uluna"))
     ///     .unwrap()
     ///     .amount;  // should have reduced to 2345
-    /// 
+    ///
     /// let len = list.len();  // should be zero, as uusd is purged from the list
     /// ```
     pub fn deduct_many(&mut self, assets_to_deduct: &AssetList) -> StdResult<&mut Self> {
@@ -345,14 +345,14 @@ impl AssetList {
     }
 
     /// Generate a transfer messages for every asset in the list
-    /// 
+    ///
     /// ```rust
     /// use cosmwasm_std::{Addr, Response, StdResult};
     /// use cw_asset::{AssetList};
-    /// 
+    ///
     /// fn transfer_assets(list: &AssetList, recipient_addr: &Addr) -> StdResult<Response> {
     ///     let msgs = list.transfer_msgs(recipient_addr)?;
-    /// 
+    ///
     ///     Ok(Response::new()
     ///         .add_messages(msgs)
     ///         .add_attribute("assets_sent", list.to_string()))

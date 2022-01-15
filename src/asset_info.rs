@@ -10,9 +10,9 @@ use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
 /// Represents the type of an fungible asset
-/// 
+///
 /// Each **asset info** instance can be one of two variants:
-/// 
+///
 /// - CW20 tokens. To create an **asset info** instance of this type, provide the contract address.
 /// - Native SDK coins. To create an **asset info** instance of this type, provide the denomination.
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
@@ -24,15 +24,15 @@ pub enum AssetInfoBase<T> {
 
 impl<T> AssetInfoBase<T> {
     /// Create an **asset info** instance of the _CW20_ variant
-    /// 
+    ///
     /// To create an unchecked instance, provide the contract address in any of the following types:
-    /// [`cosmwasm_std::Addr`], [`String`], or [`&str`]; to create a checked instance, the address 
+    /// [`cosmwasm_std::Addr`], [`String`], or [`&str`]; to create a checked instance, the address
     /// must of type [`cosmwasm_std::Addr`].
-    /// 
+    ///
     /// ```rust
     /// use cosmwasm_std::Addr;
     /// use cw_asset::AssetInfo;
-    /// 
+    ///
     /// let info = AssetInfo::cw20(Addr::unchecked("token_addr"));
     /// ```
     pub fn cw20<A: Into<T>>(contract_addr: A) -> Self {
@@ -40,10 +40,10 @@ impl<T> AssetInfoBase<T> {
     }
 
     /// Create an **asset info** instance of the _native_ variant by providing the coin's denomination
-    /// 
+    ///
     /// ```rust
     /// use cw_asset::AssetInfo;
-    /// 
+    ///
     /// let info = AssetInfo::native("uusd");
     /// ```
     pub fn native<A: Into<String>>(denom: A) -> Self {
@@ -66,17 +66,17 @@ impl From<AssetInfo> for AssetInfoUnchecked {
 }
 
 impl AssetInfoUnchecked {
-    /// Validate data contained in an _unchecked_ **asset info** instance; return a new _checked_ 
+    /// Validate data contained in an _unchecked_ **asset info** instance; return a new _checked_
     /// **asset info** instance
-    /// 
+    ///
     /// ```rust
     /// use cosmwasm_std::{Addr, Api, StdResult};
     /// use cw_asset::{AssetInfo, AssetInfoUnchecked};
-    /// 
+    ///
     /// fn validate_asset_info(api: &dyn Api, info_unchecked: &AssetInfoUnchecked) {
     ///     match info_unchecked.check(api) {
     ///         Ok(info) => println!("asset info is valid: {}", info.to_string()),
-    ///         Err(err) => println!("asset is invalid! reason: {}", err), 
+    ///         Err(err) => println!("asset is invalid! reason: {}", err),
     ///     }
     /// }
     /// ```
@@ -101,11 +101,11 @@ impl fmt::Display for AssetInfo {
 
 impl AssetInfo {
     /// Query an address' balance of the asset
-    /// 
+    ///
     /// ```rust
     /// use cosmwasm_std::{Addr, Deps, StdResult, Uint128};
     /// use cw_asset::AssetInfo;
-    /// 
+    ///
     /// fn query_uusd_balance(deps: Deps, account_addr: &Addr) -> StdResult<Uint128> {
     ///     let info = AssetInfo::native("uusd");
     ///     info.query_balance(&deps.querier, "account_addr")
@@ -216,8 +216,8 @@ impl std::cmp::PartialEq<astroport::asset::AssetInfo> for AssetInfo {
 
 #[cfg(test)]
 mod test {
-    use super::*;
     use super::super::testing::mock_dependencies;
+    use super::*;
     use cosmwasm_std::testing::MockApi;
     use cosmwasm_std::Coin;
 
