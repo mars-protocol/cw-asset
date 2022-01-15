@@ -110,5 +110,5 @@ pub use asset::*;
 pub use asset_info::*;
 pub use asset_list::*;
 
-#[cfg(all(test, feature = "legacy"))]
+#[cfg(test)]
 mod testing;

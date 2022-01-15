@@ -217,7 +217,9 @@ impl std::cmp::PartialEq<astroport::asset::AssetInfo> for AssetInfo {
 #[cfg(test)]
 mod test {
     use super::*;
+    use super::super::testing::mock_dependencies;
     use cosmwasm_std::testing::MockApi;
+    use cosmwasm_std::Coin;
 
     #[test]
     fn creating_instances() {
@@ -259,6 +261,21 @@ mod test {
         let unchecked: AssetInfoUnchecked = checked.clone().into();
 
         assert_eq!(unchecked.check(&api).unwrap(), checked);
+    }
+
+    #[test]
+    fn querying_balance() {
+        let mut deps = mock_dependencies();
+        deps.querier.set_base_balances("alice", &[Coin::new(12345, "uusd")]);
+        deps.querier.set_cw20_balance("mock_token", "bob", 67890);
+
+        let info1 = AssetInfo::native("uusd");
+        let balance1 = info1.query_balance(&deps.as_ref().querier, "alice").unwrap();
+        assert_eq!(balance1, Uint128::new(12345));
+
+        let info2 = AssetInfo::cw20(Addr::unchecked("mock_token"));
+        let balance2 = info2.query_balance(&deps.as_ref().querier, "bob").unwrap();
+        assert_eq!(balance2, Uint128::new(67890));
     }
 }
 
