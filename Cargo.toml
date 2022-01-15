@@ -1,23 +1,21 @@
 [package]
 name = "cw-asset"
 description = "Helper library for interacting with Cosmos assets (SDK coins and CW20 tokens)"
-version = "0.3.2"
+version = "0.3.3"
 authors = ["larry <larry@delphidigital.io>"]
 edition = "2018"
 license = "GPL-3.0-or-later"
 repository = "https://github.com/mars-protocol/cw-asset"
 
-[lib]
-doctest = false # do not run doc tests
+[features]
+# `legacy` feature implements methods that cast `Asset` instances to/from legacy asset classes that
+# some projects may use 
+legacy = ["astroport"]
 
 [dependencies]
 cosmwasm-std = "0.16.0"
 cw20 = "0.9.1"
-
 schemars = "0.8.1"
 serde = { version = "1.0.103", default-features = false, features = ["derive"] }
 
 astroport = { version = "0.3.1", optional = true }
-
-[features]
-legacy = ["astroport"]

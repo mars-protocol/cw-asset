@@ -1,24 +1,21 @@
 use cosmwasm_std::testing::MockQuerier;
 use cosmwasm_std::{
-    from_binary, from_slice, Addr, Coin, Decimal, Querier, QuerierResult, QueryRequest, StdResult,
+    from_binary, from_slice, Addr, Coin, Empty, Querier, QuerierResult, QueryRequest, StdResult, 
     SystemError, WasmQuery,
 };
 use cw20::Cw20QueryMsg;
-use terra_cosmwasm::TerraQueryWrapper;
 
-use super::{cw20_querier::Cw20Querier, native_querier::NativeQuerier};
+use super::cw20_querier::Cw20Querier;
 
 pub struct CustomMockQuerier {
-    base: MockQuerier<TerraQueryWrapper>,
-    native_querier: NativeQuerier,
+    base: MockQuerier<Empty>,
     cw20_querier: Cw20Querier,
 }
 
 impl Default for CustomMockQuerier {
     fn default() -> Self {
         CustomMockQuerier {
-            base: MockQuerier::new(&[]),
-            native_querier: NativeQuerier::default(),
+            base: MockQuerier::<Empty>::new(&[]),
             cw20_querier: Cw20Querier::default(),
         }
     }
@@ -26,7 +23,7 @@ impl Default for CustomMockQuerier {
 
 impl Querier for CustomMockQuerier {
     fn raw_query(&self, bin_request: &[u8]) -> QuerierResult {
-        let request: QueryRequest<TerraQueryWrapper> = match from_slice(bin_request) {
+        let request: QueryRequest<Empty> = match from_slice(bin_request) {
             Ok(v) => v,
             Err(e) => {
                 return Err(SystemError::InvalidRequest {
@@ -41,13 +38,8 @@ impl Querier for CustomMockQuerier {
 }
 
 impl CustomMockQuerier {
-    pub fn handle_query(&self, request: &QueryRequest<TerraQueryWrapper>) -> QuerierResult {
+    pub fn handle_query(&self, request: &QueryRequest<Empty>) -> QuerierResult {
         match request {
-            QueryRequest::Custom(TerraQueryWrapper {
-                route,
-                query_data,
-            }) => self.native_querier.handle_query(route, query_data),
-
             QueryRequest::Wasm(WasmQuery::Smart {
                 contract_addr,
                 msg,
@@ -72,13 +64,5 @@ impl CustomMockQuerier {
 
     pub fn set_cw20_balance(&mut self, contract: &str, user: &str, balance: u128) {
         self.cw20_querier.set_balance(contract, user, balance);
-    }
-
-    pub fn set_native_tax_rate(&mut self, tax_rate: Decimal) {
-        self.native_querier.set_tax_rate(tax_rate);
-    }
-
-    pub fn set_native_tax_cap(&mut self, denom: &str, tax_cap: u128) {
-        self.native_querier.set_tax_cap(denom, tax_cap);
     }
 }

@@ -9,26 +9,51 @@ use cw20::{BalanceResponse as Cw20BalanceResponse, Cw20QueryMsg};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
+/// Represents the type of an fungible asset
+/// 
+/// Each **asset info** instance can be one of two variants:
+/// 
+/// - CW20 tokens. To create an **asset info** instance of this type, provide the contract address.
+/// - Native SDK coins. To create an **asset info** instance of this type, provide the denomination.
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum AssetInfoBase<T> {
-    Cw20(T),        // the contract address, String or cosmwasm_std::Addr
-    Native(String), // the native token's denom
+    Cw20(T),
+    Native(String),
 }
 
 impl<T> AssetInfoBase<T> {
-    /// Create a new `AssetInfoBase` instance representing a CW20 token of given contract address
+    /// Create an **asset info** instance of the _CW20_ variant
+    /// 
+    /// To create an unchecked instance, provide the contract address in any of the following types:
+    /// [`cosmwasm_std::Addr`], [`String`], or [`&str`]; to create a checked instance, the address 
+    /// must of type [`cosmwasm_std::Addr`].
+    /// 
+    /// ```rust
+    /// use cosmwasm_std::Addr;
+    /// use cw_asset::AssetInfo;
+    /// 
+    /// let info = AssetInfo::cw20(Addr::unchecked("token_addr"));
+    /// ```
     pub fn cw20<A: Into<T>>(contract_addr: A) -> Self {
         AssetInfoBase::Cw20(contract_addr.into())
     }
 
-    /// Create a new `AssetInfoBase` instance representing a native token of given denom
+    /// Create an **asset info** instance of the _native_ variant by providing the coin's denomination
+    /// 
+    /// ```rust
+    /// use cw_asset::AssetInfo;
+    /// 
+    /// let info = AssetInfo::native("uusd");
+    /// ```
     pub fn native<A: Into<String>>(denom: A) -> Self {
         AssetInfoBase::Native(denom.into())
     }
 }
 
+/// Represents an **asset info** instance that may contain unverified data; to be used in messages
 pub type AssetInfoUnchecked = AssetInfoBase<String>;
+/// Represents an **asset info** instance containing only verified data; to be saved in contract storage
 pub type AssetInfo = AssetInfoBase<Addr>;
 
 impl From<AssetInfo> for AssetInfoUnchecked {
@@ -41,7 +66,20 @@ impl From<AssetInfo> for AssetInfoUnchecked {
 }
 
 impl AssetInfoUnchecked {
-    /// Validate contract address (if any) and returns a new `AssetInfo` instance
+    /// Validate data contained in an _unchecked_ **asset info** instance; return a new _checked_ 
+    /// **asset info** instance
+    /// 
+    /// ```rust
+    /// use cosmwasm_std::{Addr, Api, StdResult};
+    /// use cw_asset::{AssetInfo, AssetInfoUnchecked};
+    /// 
+    /// fn validate_asset_info(api: &dyn Api, info_unchecked: &AssetInfoUnchecked) {
+    ///     match info_unchecked.check(api) {
+    ///         Ok(info) => println!("asset info is valid: {}", info.to_string()),
+    ///         Err(err) => println!("asset is invalid! reason: {}", err), 
+    ///     }
+    /// }
+    /// ```
     pub fn check(&self, api: &dyn Api) -> StdResult<AssetInfo> {
         Ok(match self {
             AssetInfoUnchecked::Cw20(contract_addr) => {
@@ -63,6 +101,16 @@ impl fmt::Display for AssetInfo {
 
 impl AssetInfo {
     /// Query an address' balance of the asset
+    /// 
+    /// ```rust
+    /// use cosmwasm_std::{Addr, Deps, StdResult, Uint128};
+    /// use cw_asset::AssetInfo;
+    /// 
+    /// fn query_uusd_balance(deps: Deps, account_addr: &Addr) -> StdResult<Uint128> {
+    ///     let info = AssetInfo::native("uusd");
+    ///     info.query_balance(&deps.querier, "account_addr")
+    /// }
+    /// ```
     pub fn query_balance<T: Into<String>>(
         &self,
         querier: &QuerierWrapper,

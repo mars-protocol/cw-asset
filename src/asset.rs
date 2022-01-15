@@ -13,22 +13,53 @@ use super::asset_info::{AssetInfo, AssetInfoBase};
 #[cfg(feature = "terra")]
 static DECIMAL_FRACTION: Uint128 = Uint128::new(1_000_000_000_000_000_000u128);
 
+/// Represents a fungible asset with a known amount
+///
+/// Each asset instance contains two values: [`info`], which specifies the asset's type (CW20 or
+/// native), and its [`amount`], which specifies the asset's amount
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct AssetBase<T> {
+    /// Specifies the asset's type (CW20 or native)
     pub info: AssetInfoBase<T>,
+    /// Specifies the asset's amount
     pub amount: Uint128,
 }
 
 impl<T> AssetBase<T> {
-    /// Create a new `AssetBase` instance based on given asset info and amount
-    pub fn new<B: Into<Uint128>>(info: AssetInfoBase<T>, amount: B) -> Self {
+    /// Create a new **asset** instance based on given asset info and amount
+    ///
+    /// To create an unchecked instance, the [`info`] parameter may be either checked or unchecked;
+    /// to create a checked instance, the [`info`] paramter must also be checked.
+    /// 
+    /// ```rust
+    /// use cosmwasm_std::Addr;
+    /// use cw_asset::{Asset, AssetInfo};
+    /// 
+    /// let info1 = AssetInfo::cw20(Addr::unchecked("token_addr"));
+    /// let asset1 = Asset::new(info1, 12345u128);
+    /// 
+    /// let info2 = AssetInfo::native("uusd");
+    /// let asset2 = Asset::new(info2, 67890u128);
+    /// ```
+    pub fn new<A: Into<AssetInfoBase<T>>, B: Into<Uint128>>(info: A, amount: B) -> Self {
         Self {
-            info,
+            info: info.into(),
             amount: amount.into(),
         }
     }
 
-    /// Create a new `AssetBase` instance representing a CW20 token of given contract address and amount
+    /// Create a new **asset** instance representing a CW20 token of given contract address and amount
+    /// 
+    /// To create an unchecked instance, provide the contract address in any of the following types:
+    /// [`cosmwasm_std::Addr`], [`String`], or [`&str`]; to create a checked instance, the address 
+    /// must of type [`cosmwasm_std::Addr`]. 
+    /// 
+    /// ```rust
+    /// use cosmwasm_std::Addr;
+    /// use cw_asset::Asset;
+    /// 
+    /// let asset = Asset::cw20(Addr::unchecked("token_addr"), 12345u128);
+    /// ```
     pub fn cw20<A: Into<T>, B: Into<Uint128>>(contract_addr: A, amount: B) -> Self {
         Self {
             info: AssetInfoBase::cw20(contract_addr),
@@ -36,7 +67,13 @@ impl<T> AssetBase<T> {
         }
     }
 
-    /// Create a new `AssetBase` instance representing a native coin of given denom
+    /// Create a new **asset** instance representing a native coin of given denom and amount
+    /// 
+    /// ```rust
+    /// use cw_asset::Asset;
+    /// 
+    /// let asset = Asset::native("uusd", 12345u128);
+    /// ```
     pub fn native<A: Into<String>, B: Into<Uint128>>(denom: A, amount: B) -> Self {
         Self {
             info: AssetInfoBase::native(denom),
@@ -45,7 +82,9 @@ impl<T> AssetBase<T> {
     }
 }
 
+// Represents an **asset** instance that may contain unverified data; to be used in messages
 pub type AssetUnchecked = AssetBase<String>;
+// Represents an **asset** instance containing only verified data; to be saved in contract storage
 pub type Asset = AssetBase<Addr>;
 
 impl From<Asset> for AssetUnchecked {
@@ -58,7 +97,20 @@ impl From<Asset> for AssetUnchecked {
 }
 
 impl AssetUnchecked {
-    /// Validate contract address (if any) and returns a new `Asset` instance
+    /// Validate data contained in an _unchecked_ **asset** instnace, return a new _checked_
+    /// **asset** instance
+    /// 
+    /// ```rust
+    /// use cosmwasm_std::{Addr, Api};
+    /// use cw_asset::{Asset, AssetUnchecked};
+    /// 
+    /// fn validate_asset(api: &dyn Api, asset_unchecked: &AssetUnchecked) {
+    ///     match asset_unchecked.check(api) {
+    ///         Ok(asset) => println!("asset is valid: {}", asset.to_string()),
+    ///         Err(err) => println!("asset is invalid! reason: {}", err)
+    ///     }
+    /// }
+    /// ```
     pub fn check(&self, api: &dyn Api) -> StdResult<Asset> {
         Ok(Asset {
             info: self.info.check(api)?,
@@ -91,15 +143,27 @@ impl From<&Coin> for Asset {
 impl Asset {
     /// Generate a message that sends a CW20 token to the specified recipient with a binary payload
     ///
-    /// NOTE: Only works for CW20 tokens
-    ///
-    /// **Usage:**
-    /// The following code generates a message that sends 12345 units of a mock token to a contract,
-    /// invoking a mock execute function.
+    /// NOTE: Only works for CW20 tokens. Returns error if invoked on an [`Asset`] instance 
+    /// representing a native coin, as native coins do not have an equivalent method mplemented.  
     ///
     /// ```rust
-    /// let asset = Asset::cw20(Addr::unchecked("mock_token"), 12345);
-    /// let msg = asset.send_msg("mock_contract", to_binary(&ExecuteMsg::MockFunction {})?)?;
+    /// use serde::Serialize;
+    /// 
+    /// #[derive(Serialize)]
+    /// enum MockReceiveMsg {
+    ///     MockCommand {}
+    /// }
+    /// 
+    /// use cosmwasm_std::{to_binary, Addr, Response, StdResult};
+    /// use cw_asset::Asset;
+    /// 
+    /// fn send_asset(asset: &Asset, contract_addr: &Addr, msg: &MockReceiveMsg) -> StdResult<Response> {
+    ///     let msg = asset.send_msg(contract_addr, to_binary(msg)?)?;
+    /// 
+    ///     Ok(Response::new()
+    ///         .add_message(msg)
+    ///         .add_attribute("asset_sent", asset.to_string()))
+    /// }
     /// ```
     pub fn send_msg<A: Into<String>>(&self, to: A, msg: Binary) -> StdResult<CosmosMsg> {
         match &self.info {
@@ -118,17 +182,19 @@ impl Asset {
         }
     }
 
-    /// Generate a message that transfers the asset from the sender to account `to`
-    ///
-    /// NOTE: It is generally neccessary to first deduct tax before calling this method.
-    ///
-    /// **Usage:**
-    /// The following code generates a message that sends 12345 uusd (i.e. 0.012345 UST) to Alice.
-    /// Note that due to tax, the actual deliverable amount is smaller than 12345 uusd.
+    /// Generate a message that transfers the asset from the sender to to a specified account
     ///
     /// ```rust
-    /// let asset = Asset::native("uusd", 12345);
-    /// let msg = asset.deduct_tax(&deps.querier)?.transfer_msg("alice")?;
+    /// use cosmwasm_std::{Addr, Response, StdResult};
+    /// use cw_asset::Asset;
+    /// 
+    /// fn transfer_asset(asset: &Asset, recipient_addr: &Addr) -> StdResult<Response> {
+    ///     let msg = asset.transfer_msg(recipient_addr)?;
+    /// 
+    ///     Ok(Response::new()
+    ///         .add_message(msg)
+    ///         .add_attribute("asset_sent", asset.to_string()))
+    /// }
     /// ```
     pub fn transfer_msg<A: Into<String>>(&self, to: A) -> StdResult<CosmosMsg> {
         match &self.info {
@@ -150,15 +216,23 @@ impl Asset {
         }
     }
 
-    /// Generate a message that draws the asset from account `from` to account `to`
+    /// Generate a message that draws the asset from the account specified by [`from`] to the one
+    /// specified by [`to`]
     ///
-    /// **Usage:**
-    /// The following code generates a message that draws 69420 uMIR token from Alice's wallet to
-    /// Bob's. Note that Alice must have approve this spending for this transaction to work.
+    /// NOTE: Only works for CW20 tokens. Returns error if invoked on an [`Asset`] instance 
+    /// representing a native coin, as native coins do not have an equivalent method mplemented.  
     ///
     /// ```rust
-    /// let asset = Asset::cw20("mirror_token", 69420);
-    /// let msg = asset.transfer_from_msg("alice", "bob")?;
+    /// use cosmwasm_std::{Addr, Response, StdResult};
+    /// use cw_asset::Asset;
+    /// 
+    /// fn draw_asset(asset: &Asset, user_addr: &Addr, contract_addr: &Addr) -> StdResult<Response> {
+    ///     let msg = asset.transfer_from_msg(user_addr, contract_addr)?;
+    /// 
+    ///     Ok(Response::new()
+    ///         .add_message(msg)
+    ///         .add_attribute("asset_drawn", asset.to_string()))
+    /// }
     /// ```
     pub fn transfer_from_msg<A: Into<String>, B: Into<String>>(
         &self,
@@ -242,7 +316,7 @@ mod tests {
 
     #[test]
     fn creating_instances() {
-        let info = AssetInfo::Native(String::from("uusd"));
+        let info = AssetInfo::native("uusd");
         let asset = Asset::new(info, 123456u128);
         assert_eq!(
             asset,
