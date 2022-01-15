@@ -1,7 +1,6 @@
 # `cw-asset`
 
-A unified representation of various types of Cosmos fungible assets, and helper functions for  
-interacting with them
+A unified representation of various types of Cosmos fungible assets, and helper functions for interacting with them
 
 ## License
 
