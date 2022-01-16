@@ -424,7 +424,7 @@ mod tests {
     #[test]
     fn displaying() {
         let list = mock_list();
-        assert_eq!(list.to_string(), String::from("uusd:69420,mock_token:88888"));
+        assert_eq!(list.to_string(), String::from("native:uusd:69420,cw20:mock_token:88888"));
     }
 
     #[test]
@@ -498,7 +498,7 @@ mod tests {
         assert_eq!(asset_option, None);
 
         let err = list.deduct(&Asset::new(uusd(), 57075u128));
-        assert_eq!(err, Err(StdError::generic_err("not found in asset list: uusd")));
+        assert_eq!(err, Err(StdError::generic_err("not found in asset list: native:uusd")));
 
         list.deduct(&Asset::new(mock_token(), 12345u128)).unwrap();
         let asset = list.find(&mock_token()).unwrap();

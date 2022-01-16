@@ -360,10 +360,10 @@ mod tests {
     #[test]
     fn displaying() {
         let asset = Asset::native("uusd", 69420u128);
-        assert_eq!(asset.to_string(), String::from("uusd:69420"));
+        assert_eq!(asset.to_string(), String::from("native:uusd:69420"));
 
         let asset = Asset::cw20(Addr::unchecked("mock_token"), 88888u128);
-        assert_eq!(asset.to_string(), String::from("mock_token:88888"));
+        assert_eq!(asset.to_string(), String::from("cw20:mock_token:88888"));
     }
 
     #[test]

@@ -93,8 +93,8 @@ impl AssetInfoUnchecked {
 impl fmt::Display for AssetInfo {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            AssetInfo::Cw20(contract_addr) => write!(f, "{}", contract_addr),
-            AssetInfo::Native(denom) => write!(f, "{}", denom),
+            AssetInfo::Cw20(contract_addr) => write!(f, "cw20:{}", contract_addr),
+            AssetInfo::Native(denom) => write!(f, "native:{}", denom),
         }
     }
 }
@@ -247,10 +247,10 @@ mod test {
     #[test]
     fn displaying() {
         let info = AssetInfo::native("uusd");
-        assert_eq!(info.to_string(), String::from("uusd"));
+        assert_eq!(info.to_string(), String::from("native:uusd"));
 
         let info = AssetInfo::cw20(Addr::unchecked("mock_token"));
-        assert_eq!(info.to_string(), String::from("mock_token"));
+        assert_eq!(info.to_string(), String::from("cw20:mock_token"));
     }
 
     #[test]
