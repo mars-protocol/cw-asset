@@ -62,6 +62,15 @@ impl fmt::Display for AssetList {
     }
 }
 
+impl<'a> IntoIterator for &'a AssetList {
+    type Item = &'a Asset;
+    type IntoIter = std::slice::Iter<'a, Asset>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.0.iter()
+    }
+}
+
 impl From<Vec<Asset>> for AssetList {
     fn from(vec: Vec<Asset>) -> Self {
         Self(vec)
@@ -425,6 +434,17 @@ mod tests {
     fn displaying() {
         let list = mock_list();
         assert_eq!(list.to_string(), String::from("native:uusd:69420,cw20:mock_token:88888"));
+    }
+
+    #[test]
+    fn iterating() {
+        let list = mock_list();
+
+        let strs: Vec<String> = list.into_iter().map(|asset| asset.to_string()).collect();
+        assert_eq!(strs, vec![
+            String::from("native:uusd:69420"),
+            String::from("cw20:mock_token:88888"),
+        ]);
     }
 
     #[test]
