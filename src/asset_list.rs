@@ -62,6 +62,22 @@ impl fmt::Display for AssetList {
     }
 }
 
+impl std::ops::Index<usize> for AssetList {
+    type Output = Asset;
+
+    fn index(&self, index: usize) -> &Self::Output {
+        &self.0[index]
+    }
+}
+
+impl std::ops::Index<usize> for &AssetList {
+    type Output = Asset;
+
+    fn index(&self, index: usize) -> &Self::Output {
+        &self.0[index]
+    }
+}
+
 impl<'a> IntoIterator for &'a AssetList {
     type Item = &'a Asset;
     type IntoIter = std::slice::Iter<'a, Asset>;
@@ -434,6 +450,14 @@ mod tests {
     fn displaying() {
         let list = mock_list();
         assert_eq!(list.to_string(), String::from("native:uusd:69420,cw20:mock_token:88888"));
+    }
+
+    #[test]
+    fn indexing() {
+        let list = mock_list();
+        let vec = list.to_vec();
+        assert_eq!(list[0], vec[0]);
+        assert_eq!(list[1], vec[1]);
     }
 
     #[test]
