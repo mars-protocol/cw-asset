@@ -1,4 +1,6 @@
 use std::fmt;
+#[cfg(feature = "legacy")]
+use std::convert::TryInto;
 
 use cosmwasm_std::{Addr, Api, Coin, CosmosMsg, StdError, StdResult};
 
@@ -392,23 +394,27 @@ impl AssetList {
 }
 
 #[cfg(feature = "legacy")]
-impl From<AssetList> for Vec<astroport::asset::Asset> {
-    fn from(list: AssetList) -> Self {
-        list.0.iter().map(|asset| asset.into()).collect()
-    }
-}
-
-#[cfg(feature = "legacy")]
-impl From<&AssetList> for Vec<astroport::asset::Asset> {
-    fn from(list: &AssetList) -> Self {
-        list.clone().into()
-    }
-}
-
-#[cfg(feature = "legacy")]
 impl AssetList {
+    /// Create an `AssetList` instance from an array of Astroport assets
+    /// 
+    /// This is useful for parsing the result of `astroport::pair::QueryMsg::PoolResponse`
     pub fn from_legacy(legacy_list: &[astroport::asset::Asset]) -> Self {
         Self(legacy_list.to_vec().iter().map(|asset| asset.into()).collect())
+    }
+
+    /// Cast an asset list to a fixed length array of Astroport assets
+    /// 
+    /// This is useful when creating `astroport::pair::ExecuteMsg::ProvideLiquidity` message
+    /// 
+    /// NOTE: `self` must have exactly two element, or it cannot be cast into the fixed length array.
+    pub fn try_into_legacy(&self) -> StdResult<[astroport::asset::Asset; 2]> {
+        self.0
+            .iter()
+            .cloned()
+            .map(|asset| astroport::asset::Asset::from(asset))
+            .collect::<Vec<astroport::asset::Asset>>()
+            .try_into()
+            .map_err(|_| StdError::generic_err(format!("failed to map AssetList to legacy: {}", self)))
     }
 }
 
@@ -599,7 +605,7 @@ mod tests_legacy {
 
     #[test]
     fn casting_legacy() {
-        let legacy_list = vec![
+        let legacy_list: [astroport::asset::Asset; 2] = [
             astroport::asset::Asset {
                 info: astroport::asset::AssetInfo::NativeToken {
                     denom: String::from("uusd"),
@@ -614,10 +620,16 @@ mod tests_legacy {
             },
         ];
 
-        let list = mock_list();
+        let mut list = mock_list();
 
         assert_eq!(list, AssetList::from_legacy(&legacy_list));
-        assert_eq!(legacy_list, Vec::<astroport::asset::Asset>::from(&list));
-        assert_eq!(legacy_list, Vec::<astroport::asset::Asset>::from(list));
+        assert_eq!(legacy_list, list.try_into_legacy().unwrap());
+
+        list.add(&Asset::native("ukrw", 12345u128)).unwrap();
+
+        assert_eq!(
+            list.try_into_legacy(), 
+            Err(StdError::generic_err("failed to map AssetList to legacy: native:uusd:69420,cw20:mock_token:88888,native:ukrw:12345"))
+        );
     }
 }
