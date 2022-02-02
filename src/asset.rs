@@ -117,6 +117,15 @@ impl AssetUnchecked {
             amount: self.amount,
         })
     }
+
+    /// Similar to `check`, but in case `self` is a native token, also verifies its denom is included
+    /// in a given whitelist
+    pub fn check_whitelist(&self, api: &dyn Api, whitelist: &[&str]) -> StdResult<Asset> {
+        Ok(Asset {
+            info: self.info.check_whitelist(api, whitelist)?,
+            amount: self.amount,
+        })
+    }
 }
 
 impl fmt::Display for Asset {
@@ -307,6 +316,7 @@ impl std::cmp::PartialEq<astroport::asset::Asset> for Asset {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::AssetInfoUnchecked;
     use cosmwasm_std::testing::MockApi;
 
     #[derive(Serialize)]
@@ -367,13 +377,22 @@ mod tests {
     }
 
     #[test]
-    fn casting() {
+    fn checking() {
         let api = MockApi::default();
 
-        let checked = Asset::cw20(Addr::unchecked("mock_token"), 123456u128);
+        let checked = Asset::cw20(Addr::unchecked("mock_token"), 12345u128);
         let unchecked: AssetUnchecked = checked.clone().into();
-
         assert_eq!(unchecked.check(&api).unwrap(), checked);
+
+        let checked = Asset::native("uusd", 12345u128);
+        let unchecked: AssetUnchecked = checked.clone().into();
+        assert_eq!(unchecked.check_whitelist(&api, &["uusd", "uluna", "uosmo"]).unwrap(), checked);
+
+        let unchecked = AssetUnchecked::new(AssetInfoUnchecked::native("uatom"), 12345u128);
+        assert_eq!(
+            unchecked.check_whitelist(&api, &["uusd", "uluna", "uosmo"]),
+            Err(StdError::generic_err("invalid denom uatom; must be uusd|uluna|uosmo")),
+        );
     }
 
     #[test]

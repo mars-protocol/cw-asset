@@ -52,6 +52,14 @@ impl AssetListUnchecked {
             self.0.iter().map(|asset| asset.check(api)).collect::<StdResult<Vec<Asset>>>()?,
         ))
     }
+
+    /// Similar to `check`, but in case `self` is a native token, also verifies its denom is included
+    /// in a given whitelist
+    pub fn check_whitelist(&self, api: &dyn Api, whitelist: &[&str]) -> StdResult<AssetList> {
+        Ok(AssetList::from(
+            self.0.iter().map(|asset| asset.check_whitelist(api, whitelist)).collect::<StdResult<Vec<Asset>>>()?,
+        ))
+    }
 }
 
 impl fmt::Display for AssetList {
@@ -478,13 +486,18 @@ mod tests {
     }
 
     #[test]
-    fn casting() {
+    fn checking() {
         let api = MockApi::default();
 
         let checked = mock_list();
         let unchecked: AssetListUnchecked = checked.clone().into();
+        assert_eq!(unchecked.check(&api).unwrap(), checked.clone());
+        assert_eq!(unchecked.check_whitelist(&api, &["uusd", "uluna"]).unwrap(), checked);
 
-        assert_eq!(unchecked.check(&api).unwrap(), checked);
+        assert_eq!(
+            unchecked.check_whitelist(&api, &["uatom", "uosmo", "uscrt"]),
+            Err(StdError::generic_err("invalid denom uusd; must be uatom|uosmo|uscrt")),
+        );
     }
 
     #[test]

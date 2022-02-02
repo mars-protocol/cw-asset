@@ -1,8 +1,8 @@
 use std::fmt;
 
 use cosmwasm_std::{
-    to_binary, Addr, Api, BalanceResponse, BankQuery, QuerierWrapper, QueryRequest, StdResult,
-    Uint128, WasmQuery,
+    to_binary, Addr, Api, BalanceResponse, BankQuery, QuerierWrapper, QueryRequest, StdError,
+    StdResult, Uint128, WasmQuery,
 };
 use cw20::{BalanceResponse as Cw20BalanceResponse, Cw20QueryMsg};
 
@@ -86,6 +86,24 @@ impl AssetInfoUnchecked {
                 AssetInfo::Cw20(api.addr_validate(contract_addr)?)
             }
             AssetInfoUnchecked::Native(denom) => AssetInfo::Native(denom.clone()),
+        })
+    }
+
+    /// Similar to `check`, but in case `self` is a native token, also verifies its denom is included
+    /// in a given whitelist
+    pub fn check_whitelist(&self, api: &dyn Api, whitelist: &[&str]) -> StdResult<AssetInfo> {
+        Ok(match self {
+            AssetInfoUnchecked::Cw20(contract_addr) => {
+                AssetInfo::Cw20(api.addr_validate(contract_addr)?)
+            }
+            AssetInfoUnchecked::Native(denom) => {
+                if !whitelist.contains(&&denom[..]) {
+                    return Err(StdError::generic_err(
+                        format!("invalid denom {}; must be {}", denom, whitelist.join("|"))
+                    ));
+                }
+                AssetInfo::Native(denom.clone())
+            }
         })
     }
 }
@@ -259,8 +277,17 @@ mod test {
 
         let checked = AssetInfo::cw20(Addr::unchecked("mock_token"));
         let unchecked: AssetInfoUnchecked = checked.clone().into();
-
         assert_eq!(unchecked.check(&api).unwrap(), checked);
+
+        let checked = AssetInfo::native("uusd");
+        let unchecked: AssetInfoUnchecked = checked.clone().into();
+        assert_eq!(unchecked.check_whitelist(&api, &["uusd", "uluna", "uosmo"]).unwrap(), checked);
+
+        let unchecked = AssetInfoUnchecked::native("uatom");
+        assert_eq!(
+            unchecked.check_whitelist(&api, &["uusd", "uluna", "uosmo"]), 
+            Err(StdError::generic_err("invalid denom uatom; must be uusd|uluna|uosmo")),
+        );
     }
 
     #[test]
