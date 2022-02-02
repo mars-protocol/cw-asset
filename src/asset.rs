@@ -10,9 +10,6 @@ use serde::{Deserialize, Serialize};
 
 use super::asset_info::{AssetInfo, AssetInfoBase};
 
-#[cfg(feature = "terra")]
-static DECIMAL_FRACTION: Uint128 = Uint128::new(1_000_000_000_000_000_000u128);
-
 /// Represents a fungible asset with a known amount
 ///
 /// Each asset instance contains two values: [`info`], which specifies the asset's type (CW20 or
