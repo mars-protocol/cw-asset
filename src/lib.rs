@@ -49,9 +49,9 @@
 //!
 //! ## Use in messages
 //!
-//! [`Asset`] and [`AssetList`] each come with an _unchecked_ counterpart which contains unverified
-//! addresses and implements traits that allow them to be serialized into JSON, so that they can be
-//! directly used in Cosmos messages:
+//! [`Asset`] and [`AssetList`] each comes with an _unchecked_ counterpart which contains unverified
+//! addresses and/or denoms, and implements traits that allow them to be serialized into JSON, so 
+//! that they can be directly used in Cosmos messages:
 //!
 //! ```rust
 //! use serde::{Serialize, Deserialize};
@@ -74,9 +74,11 @@
 //! ```rust
 //! use cosmwasm_std::{Api, StdResult};
 //! use cw_asset::{Asset, AssetUnchecked};
+//! 
+//! const ACCEPTED_DENOMS: &[&str] = &["uatom", "uosmo", "uluna"];
 //!
 //! fn validate_deposit(api: &dyn Api, asset_unchecked: AssetUnchecked) -> StdResult<()> {
-//!     let asset: Asset = asset_unchecked.check(api)?;
+//!     let asset: Asset = asset_unchecked.check(api, Some(ACCEPTED_DENOMS))?;
 //!     Ok(())
 //! }
 //! ```

@@ -67,40 +67,34 @@ impl From<AssetInfo> for AssetInfoUnchecked {
 
 impl AssetInfoUnchecked {
     /// Validate data contained in an _unchecked_ **asset info** instance; return a new _checked_
-    /// **asset info** instance
-    ///
+    /// **asset info** instance:
+    /// * For CW20 tokens, assert the contract address is valid
+    /// * For SDK coins, assert that the denom is included in a given whitelist; skip if the 
+    ///   whitelist is not provided
+    /// 
     /// ```rust
     /// use cosmwasm_std::{Addr, Api, StdResult};
     /// use cw_asset::{AssetInfo, AssetInfoUnchecked};
     ///
     /// fn validate_asset_info(api: &dyn Api, info_unchecked: &AssetInfoUnchecked) {
-    ///     match info_unchecked.check(api) {
+    ///     match info_unchecked.check(api, Some(&["uatom", "uluna"])) {
     ///         Ok(info) => println!("asset info is valid: {}", info.to_string()),
     ///         Err(err) => println!("asset is invalid! reason: {}", err),
     ///     }
     /// }
     /// ```
-    pub fn check(&self, api: &dyn Api) -> StdResult<AssetInfo> {
-        Ok(match self {
-            AssetInfoUnchecked::Cw20(contract_addr) => {
-                AssetInfo::Cw20(api.addr_validate(contract_addr)?)
-            }
-            AssetInfoUnchecked::Native(denom) => AssetInfo::Native(denom.clone()),
-        })
-    }
-
-    /// Similar to `check`, but in case `self` is a native token, also verifies its denom is included
-    /// in a given whitelist
-    pub fn check_whitelist(&self, api: &dyn Api, whitelist: &[&str]) -> StdResult<AssetInfo> {
+    pub fn check(&self, api: &dyn Api, optional_whitelist: Option<&[&str]>) -> StdResult<AssetInfo> {
         Ok(match self {
             AssetInfoUnchecked::Cw20(contract_addr) => {
                 AssetInfo::Cw20(api.addr_validate(contract_addr)?)
             }
             AssetInfoUnchecked::Native(denom) => {
-                if !whitelist.contains(&&denom[..]) {
-                    return Err(StdError::generic_err(
-                        format!("invalid denom {}; must be {}", denom, whitelist.join("|"))
-                    ));
+                if let Some(whitelist) = optional_whitelist {
+                    if !whitelist.contains(&&denom[..]) {
+                        return Err(StdError::generic_err(
+                            format!("invalid denom {}; must be {}", denom, whitelist.join("|"))
+                        ));
+                    }
                 }
                 AssetInfo::Native(denom.clone())
             }
@@ -277,15 +271,15 @@ mod test {
 
         let checked = AssetInfo::cw20(Addr::unchecked("mock_token"));
         let unchecked: AssetInfoUnchecked = checked.clone().into();
-        assert_eq!(unchecked.check(&api).unwrap(), checked);
+        assert_eq!(unchecked.check(&api, None).unwrap(), checked);
 
         let checked = AssetInfo::native("uusd");
         let unchecked: AssetInfoUnchecked = checked.clone().into();
-        assert_eq!(unchecked.check_whitelist(&api, &["uusd", "uluna", "uosmo"]).unwrap(), checked);
+        assert_eq!(unchecked.check(&api, Some(&["uusd", "uluna", "uosmo"])).unwrap(), checked);
 
         let unchecked = AssetInfoUnchecked::native("uatom");
         assert_eq!(
-            unchecked.check_whitelist(&api, &["uusd", "uluna", "uosmo"]), 
+            unchecked.check(&api, Some(&["uusd", "uluna", "uosmo"])), 
             Err(StdError::generic_err("invalid denom uatom; must be uusd|uluna|uosmo")),
         );
     }

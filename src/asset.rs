@@ -95,31 +95,25 @@ impl From<Asset> for AssetUnchecked {
 
 impl AssetUnchecked {
     /// Validate data contained in an _unchecked_ **asset** instnace, return a new _checked_
-    /// **asset** instance
+    /// **asset** instance:
+    /// * For CW20 tokens, assert the contract address is valid
+    /// * For SDK coins, assert that the denom is included in a given whitelist; skip if the 
+    ///   whitelist is not provided
     ///
     /// ```rust
     /// use cosmwasm_std::{Addr, Api};
     /// use cw_asset::{Asset, AssetUnchecked};
     ///
     /// fn validate_asset(api: &dyn Api, asset_unchecked: &AssetUnchecked) {
-    ///     match asset_unchecked.check(api) {
+    ///     match asset_unchecked.check(api, Some(&["uatom", "uluna"])) {
     ///         Ok(asset) => println!("asset is valid: {}", asset.to_string()),
     ///         Err(err) => println!("asset is invalid! reason: {}", err)
     ///     }
     /// }
     /// ```
-    pub fn check(&self, api: &dyn Api) -> StdResult<Asset> {
+    pub fn check(&self, api: &dyn Api, optional_whitelist: Option<&[&str]>) -> StdResult<Asset> {
         Ok(Asset {
-            info: self.info.check(api)?,
-            amount: self.amount,
-        })
-    }
-
-    /// Similar to `check`, but in case `self` is a native token, also verifies its denom is included
-    /// in a given whitelist
-    pub fn check_whitelist(&self, api: &dyn Api, whitelist: &[&str]) -> StdResult<Asset> {
-        Ok(Asset {
-            info: self.info.check_whitelist(api, whitelist)?,
+            info: self.info.check(api, optional_whitelist)?,
             amount: self.amount,
         })
     }
@@ -379,15 +373,15 @@ mod tests {
 
         let checked = Asset::cw20(Addr::unchecked("mock_token"), 12345u128);
         let unchecked: AssetUnchecked = checked.clone().into();
-        assert_eq!(unchecked.check(&api).unwrap(), checked);
+        assert_eq!(unchecked.check(&api, None).unwrap(), checked);
 
         let checked = Asset::native("uusd", 12345u128);
         let unchecked: AssetUnchecked = checked.clone().into();
-        assert_eq!(unchecked.check_whitelist(&api, &["uusd", "uluna", "uosmo"]).unwrap(), checked);
+        assert_eq!(unchecked.check(&api, Some(&["uusd", "uluna", "uosmo"])).unwrap(), checked);
 
         let unchecked = AssetUnchecked::new(AssetInfoUnchecked::native("uatom"), 12345u128);
         assert_eq!(
-            unchecked.check_whitelist(&api, &["uusd", "uluna", "uosmo"]),
+            unchecked.check(&api, Some(&["uusd", "uluna", "uosmo"])),
             Err(StdError::generic_err("invalid denom uatom; must be uusd|uluna|uosmo")),
         );
     }
