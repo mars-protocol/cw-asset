@@ -1,3 +1,4 @@
+use std::convert::TryFrom;
 use std::fmt;
 
 use cosmwasm_std::{
@@ -97,7 +98,7 @@ impl AssetUnchecked {
     /// Validate data contained in an _unchecked_ **asset** instnace, return a new _checked_
     /// **asset** instance:
     /// * For CW20 tokens, assert the contract address is valid
-    /// * For SDK coins, assert that the denom is included in a given whitelist; skip if the 
+    /// * For SDK coins, assert that the denom is included in a given whitelist; skip if the
     ///   whitelist is not provided
     ///
     /// ```rust
@@ -137,6 +138,45 @@ impl From<Coin> for Asset {
 impl From<&Coin> for Asset {
     fn from(coin: &Coin) -> Self {
         coin.clone().into()
+    }
+}
+
+impl TryFrom<Asset> for Coin {
+    type Error = StdError;
+    fn try_from(asset: Asset) -> Result<Self, Self::Error> {
+        match &asset.info {
+            AssetInfo::Native(denom) => Ok(Coin {
+                denom: denom.clone(),
+                amount: asset.amount,
+            }),
+            AssetInfo::Cw20(_) => Err(StdError::generic_err(
+                format!("cannot cast asset {} into cosmwasm_std::Coin", asset.to_string())
+            )),
+        }
+    }
+}
+
+impl TryFrom<&Asset> for Coin {
+    type Error = StdError;
+    fn try_from(asset: &Asset) -> Result<Self, Self::Error> {
+        Coin::try_from(asset.clone())
+    }
+}
+
+impl std::cmp::PartialEq<Asset> for Coin {
+    fn eq(&self, other: &Asset) -> bool {
+        match &other.info {
+            AssetInfo::Native(denom) => {
+                self.denom == *denom && self.amount == other.amount
+            }
+            AssetInfo::Cw20(_) => false
+        }
+    }
+}
+
+impl std::cmp::PartialEq<Coin> for Asset {
+    fn eq(&self, other: &Coin) -> bool {
+        other == self
     }
 }
 
@@ -347,6 +387,27 @@ mod tests {
     }
 
     #[test]
+    fn casting_coin() {
+        let uusd = Asset::native("uusd", 69u128);
+        let uusd_coin = Coin {
+            denom: String::from("uusd"),
+            amount: Uint128::new(69)
+        };
+        assert_eq!(Coin::try_from(&uusd).unwrap(), uusd_coin);
+        assert_eq!(Coin::try_from(uusd).unwrap(), uusd_coin);
+
+        let astro = Asset::cw20(Addr::unchecked("astro_token"), 69u128);
+        assert_eq!(
+            Coin::try_from(&astro), 
+            Err(StdError::generic_err("cannot cast asset cw20:astro_token:69 into cosmwasm_std::Coin"))
+        );
+        assert_eq!(
+            Coin::try_from(astro), 
+            Err(StdError::generic_err("cannot cast asset cw20:astro_token:69 into cosmwasm_std::Coin"))
+        );
+    }
+
+    #[test]
     fn comparing() {
         let uluna1 = Asset::native("uluna", 69u128);
         let uluna2 = Asset::native("uluna", 420u128);
@@ -356,6 +417,27 @@ mod tests {
         assert_eq!(uluna1 == uluna2, false);
         assert_eq!(uluna1 == uusd, false);
         assert_eq!(astro == astro.clone(), true);
+    }
+
+    #[test]
+    fn comparing_coin() {
+        let uluna = Asset::native("uluna", 69u128);
+        let uusd_1 = Asset::native("uusd", 69u128);
+        let uusd_2 = Asset::native("uusd", 420u128);
+        let uusd_coin = Coin {
+            denom: String::from("uusd"),
+            amount: Uint128::new(69)
+        };
+        let astro = Asset::cw20(Addr::unchecked("astro_token"), 69u128);
+
+        assert_eq!(uluna == uusd_coin, false);
+        assert_eq!(uusd_coin == uluna, false);
+        assert_eq!(uusd_1 == uusd_coin, true);
+        assert_eq!(uusd_coin == uusd_1, true);
+        assert_eq!(uusd_2 == uusd_coin, false);
+        assert_eq!(uusd_coin == uusd_2, false);
+        assert_eq!(astro == uusd_coin, false);
+        assert_eq!(uusd_coin == astro, false);
     }
 
     #[test]
