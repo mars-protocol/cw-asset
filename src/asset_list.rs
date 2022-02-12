@@ -442,13 +442,16 @@ mod test_helpers {
     }
 
     pub fn mock_list() -> AssetList {
-        AssetList::from(vec![Asset::native("uusd", 69420u128), Asset::new(mock_token(), 88888u128)])
+        AssetList::from(vec![
+            Asset::native("uusd", 69420u128), 
+            Asset::new(mock_token(), 88888u128),
+        ])
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use super::super::asset::Asset;
+    use super::super::asset::{Asset, AssetUnchecked};
     use super::test_helpers::{mock_list, mock_token, uluna, uusd};
     use super::*;
     use cosmwasm_std::testing::MockApi;
@@ -495,6 +498,19 @@ mod tests {
             unchecked.check(&api, Some(&["uatom", "uosmo", "uscrt"])),
             Err(StdError::generic_err("invalid denom uusd; must be uatom|uosmo|uscrt")),
         );
+    }
+
+    #[test]
+    fn checking_uppercase() {
+        let api = MockApi::default();
+
+        let checked = mock_list();
+        let unchecked = AssetListBase(vec![
+            AssetUnchecked::native("uusd", 69420u128), 
+            AssetUnchecked::cw20("MOCK_TOKEN", 88888u128),
+        ]);
+
+        assert_eq!(unchecked.check(&api, None).unwrap(), checked);
     }
 
     #[test]

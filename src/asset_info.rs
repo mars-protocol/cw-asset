@@ -72,6 +72,7 @@ impl AssetInfoUnchecked {
     /// * For SDK coins, assert that the denom is included in a given whitelist; skip if the 
     ///   whitelist is not provided
     /// 
+    /// 
     /// ```rust
     /// use cosmwasm_std::{Addr, Api, StdResult};
     /// use cw_asset::{AssetInfo, AssetInfoUnchecked};
@@ -86,7 +87,9 @@ impl AssetInfoUnchecked {
     pub fn check(&self, api: &dyn Api, optional_whitelist: Option<&[&str]>) -> StdResult<AssetInfo> {
         Ok(match self {
             AssetInfoUnchecked::Cw20(contract_addr) => {
-                AssetInfo::Cw20(api.addr_validate(contract_addr)?)
+                // NOTE: We cast all contract addresses to lowercase, in order to prevent 
+                // [a potential exploit](https://github.com/mars-protocol/cw-asset/issues/3)
+                AssetInfo::Cw20(api.addr_validate(&contract_addr.to_lowercase())?)
             }
             AssetInfoUnchecked::Native(denom) => {
                 if let Some(whitelist) = optional_whitelist {
@@ -282,6 +285,16 @@ mod test {
             unchecked.check(&api, Some(&["uusd", "uluna", "uosmo"])), 
             Err(StdError::generic_err("invalid denom uatom; must be uusd|uluna|uosmo")),
         );
+    }
+
+    #[test]
+    fn checking_uppercase() {
+        let api = MockApi::default();
+
+        let checked = AssetInfo::cw20(Addr::unchecked("terra1234abcd"));
+        let unchecked = AssetInfoUnchecked::cw20("TERRA1234ABCD");
+
+        assert_eq!(unchecked.check(&api, None).unwrap(), checked);
     }
 
     #[test]

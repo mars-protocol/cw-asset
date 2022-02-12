@@ -469,6 +469,16 @@ mod tests {
     }
 
     #[test]
+    fn checking_uppercase() {
+        let api = MockApi::default();
+
+        let checked = Asset::cw20(Addr::unchecked("terra1234abcd"), 12345u128);
+        let unchecked = AssetUnchecked::cw20("TERRA1234ABCD", 12345u128);
+
+        assert_eq!(unchecked.check(&api, None).unwrap(), checked);
+    }
+
+    #[test]
     fn creating_messages() {
         let token = Asset::cw20(Addr::unchecked("mock_token"), 123456u128);
         let coin = Asset::native("uusd", 123456u128);
