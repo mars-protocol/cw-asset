@@ -1,4 +1,5 @@
 use std::fmt;
+use std::str::FromStr;
 
 use cosmwasm_std::{
     to_binary, Addr, Api, BalanceResponse, BankQuery, QuerierWrapper, QueryRequest, StdError,
@@ -55,6 +56,27 @@ impl<T> AssetInfoBase<T> {
 pub type AssetInfoUnchecked = AssetInfoBase<String>;
 /// Represents an **asset info** instance containing only verified data; to be saved in contract storage
 pub type AssetInfo = AssetInfoBase<Addr>;
+
+impl FromStr for AssetInfoUnchecked {
+    type Err = StdError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let words: Vec<&str> = s.split(":").collect();
+        if words.len() != 2 {
+            return Err(StdError::generic_err(
+                format!("invalid asset info format `{}`; must be in format `native:{{denom}}` or `cw20:{{contract_addr}}`", s)
+            ));
+        }
+
+        match words[0] {
+            "native" => Ok(AssetInfoUnchecked::Native(String::from(words[1]))),
+            "cw20" => Ok(AssetInfoUnchecked::Cw20(String::from(words[1]))),
+            ty => Err(StdError::generic_err(
+                format!("invalid asset type `{}`; must be `native` or `cw20`", ty)
+            ))
+        }
+    }
+}
 
 impl From<AssetInfo> for AssetInfoUnchecked {
     fn from(asset_info: AssetInfo) -> Self {
@@ -260,7 +282,34 @@ mod test {
     }
 
     #[test]
-    fn displaying() {
+    fn from_string() {
+        let s = "native:uusd:12345";
+        assert_eq!(
+            AssetInfoUnchecked::from_str(s), 
+            Err(StdError::generic_err("invalid asset info format `native:uusd:12345`; must be in format `native:{denom}` or `cw20:{contract_addr}`")),
+        );
+
+        let s = "cw721:galactic_punk";
+        assert_eq!(
+            AssetInfoUnchecked::from_str(s),
+            Err(StdError::generic_err("invalid asset type `cw721`; must be `native` or `cw20`")),
+        );
+
+        let s = "native:uusd";
+        assert_eq!(
+            AssetInfoUnchecked::from_str(s).unwrap(),
+            AssetInfoUnchecked::native("uusd"),
+        );
+
+        let s = "cw20:mock_token";
+        assert_eq!(
+            AssetInfoUnchecked::from_str(s).unwrap(),
+            AssetInfoUnchecked::cw20("mock_token"),
+        );
+    }
+
+    #[test]
+    fn to_string() {
         let info = AssetInfo::native("uusd");
         assert_eq!(info.to_string(), String::from("native:uusd"));
 

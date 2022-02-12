@@ -1,4 +1,5 @@
 use std::fmt;
+use std::str::FromStr;
 #[cfg(feature = "legacy")]
 use std::convert::TryInto;
 
@@ -7,7 +8,7 @@ use cosmwasm_std::{Addr, Api, Coin, CosmosMsg, StdError, StdResult};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
-use super::asset::{Asset, AssetBase};
+use super::asset::{Asset, AssetBase, AssetUnchecked};
 use super::asset_info::AssetInfo;
 
 /// Represents a list of fungible tokens, each with a known amount
@@ -25,6 +26,25 @@ impl<T> Default for AssetListBase<T> {
 pub type AssetListUnchecked = AssetListBase<String>;
 /// Represents an **asset list** instance containing only verified data; to be used in contract storage
 pub type AssetList = AssetListBase<Addr>;
+
+impl FromStr for AssetListUnchecked {
+    type Err = StdError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        if s.len() == 0 {
+            return Ok(Self(vec![]));
+        }
+
+        Ok(Self(
+            s
+                .split(",")
+                .collect::<Vec<&str>>()
+                .iter()
+                .map(|s| AssetUnchecked::from_str(s))
+                .collect::<Result<Vec<AssetUnchecked>, Self::Err>>()?
+        ))
+    }
+}
 
 impl From<AssetList> for AssetListUnchecked {
     fn from(list: AssetList) -> Self {
@@ -462,7 +482,34 @@ mod tests {
     use cw20::Cw20ExecuteMsg;
 
     #[test]
-    fn displaying() {
+    fn from_string() {
+        let s = "";
+        assert_eq!(AssetListUnchecked::from_str(s).unwrap(), AssetListBase::<String>(vec![]));
+
+        let s = "native:uusd:69420,cw20:mock_token";
+        assert_eq!(
+            AssetListUnchecked::from_str(s),
+            Err(StdError::generic_err("invalid asset format `cw20:mock_token`; must be in format `native:{denom}:{amount}` or `cw20:{contract_addr}:{amount}`")),
+        );
+
+        let s = "native:uusd:69420,cw721:galactic_punk:1";
+        assert_eq!(
+            AssetListUnchecked::from_str(s),
+            Err(StdError::generic_err("invalid asset type `cw721`; must be `native` or `cw20`")),
+        );
+
+        let s = "native:uusd:69420,cw20:mock_token:ngmi";
+        assert_eq!(
+            AssetListUnchecked::from_str(s),
+            Err(StdError::generic_err("invalid asset amount `ngmi`; must be a 128-bit unsigned integer")),
+        );
+
+        let s = "native:uusd:69420,cw20:mock_token:88888";
+        assert_eq!(AssetListUnchecked::from_str(s).unwrap(), AssetListUnchecked::from(mock_list()));
+    }
+
+    #[test]
+    fn to_string() {
         let list = mock_list();
         assert_eq!(list.to_string(), String::from("native:uusd:69420,cw20:mock_token:88888"));
     }

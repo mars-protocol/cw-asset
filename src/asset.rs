@@ -1,5 +1,6 @@
 use std::convert::TryFrom;
 use std::fmt;
+use std::str::FromStr;
 
 use cosmwasm_std::{
     to_binary, Addr, Api, BankMsg, Binary, Coin, CosmosMsg, StdError, StdResult, Uint128, WasmMsg,
@@ -9,7 +10,7 @@ use cw20::Cw20ExecuteMsg;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
-use super::asset_info::{AssetInfo, AssetInfoBase};
+use super::asset_info::{AssetInfo, AssetInfoBase, AssetInfoUnchecked};
 
 /// Represents a fungible asset with a known amount
 ///
@@ -84,6 +85,28 @@ impl<T> AssetBase<T> {
 pub type AssetUnchecked = AssetBase<String>;
 // Represents an **asset** instance containing only verified data; to be saved in contract storage
 pub type Asset = AssetBase<Addr>;
+
+impl FromStr for AssetUnchecked {
+    type Err = StdError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let words: Vec<&str> = s.split(":").collect();
+        if words.len() != 3 {
+            return Err(StdError::generic_err(
+                format!("invalid asset format `{}`; must be in format `native:{{denom}}:{{amount}}` or `cw20:{{contract_addr}}:{{amount}}`", s)
+            ));
+        }
+
+        let info = AssetInfoUnchecked::from_str(&format!("{}:{}", words[0], words[1]))?;
+        let amount = Uint128::from_str(words[2]).map_err(
+            |_| StdError::generic_err(
+                format!("invalid asset amount `{}`; must be a 128-bit unsigned integer", words[2])
+            )
+        )?;
+
+        Ok(AssetUnchecked { info, amount })
+    }
+}
 
 impl From<Asset> for AssetUnchecked {
     fn from(asset: Asset) -> Self {
@@ -441,7 +464,40 @@ mod tests {
     }
 
     #[test]
-    fn displaying() {
+    fn from_string() {
+        let s = "native:uusd:12345:67890";
+        assert_eq!(
+            AssetUnchecked::from_str(s), 
+            Err(StdError::generic_err("invalid asset format `native:uusd:12345:67890`; must be in format `native:{denom}:{amount}` or `cw20:{contract_addr}:{amount}`")),
+        );
+
+        let s = "cw721:galactic_punk:1";
+        assert_eq!(
+            AssetUnchecked::from_str(s),
+            Err(StdError::generic_err("invalid asset type `cw721`; must be `native` or `cw20`")),
+        );
+
+        let s = "native:uusd:ngmi";
+        assert_eq!(
+            AssetUnchecked::from_str(s),
+            Err(StdError::generic_err("invalid asset amount `ngmi`; must be a 128-bit unsigned integer")),
+        );
+
+        let s = "native:uusd:12345";
+        assert_eq!(
+            AssetUnchecked::from_str(s).unwrap(),
+            AssetUnchecked::native("uusd", 12345u128),
+        );
+
+        let s = "cw20:mock_token:12345";
+        assert_eq!(
+            AssetUnchecked::from_str(s).unwrap(),
+            AssetUnchecked::cw20("mock_token", 12345u128),
+        );
+    }
+
+    #[test]
+    fn to_string() {
         let asset = Asset::native("uusd", 69420u128);
         assert_eq!(asset.to_string(), String::from("native:uusd:69420"));
 
