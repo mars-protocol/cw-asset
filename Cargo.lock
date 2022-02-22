@@ -4,12 +4,26 @@ version = 3
 
 [[package]]
 name = "astroport"
+version = "0.3.1"
+source = "git+https://github.com/astroport-fi/astroport-core.git?tag=v1.0.0#05bfb278302d462c355e47ed67566a8a97f417dd"
+dependencies = [
+ "cosmwasm-std",
+ "cw-storage-plus 0.8.1",
+ "cw20 0.8.1",
+ "schemars",
+ "serde",
+ "terra-cosmwasm",
+ "uint",
+]
+
+[[package]]
+name = "astroport"
 version = "1.0.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b56c6d8a5a14a5f569a3473a962ed1d12bfec2a19ef43584c86aae5667bdeaa8"
 dependencies = [
  "cosmwasm-std",
- "cw-storage-plus",
+ "cw-storage-plus 0.8.1",
  "cw20 0.8.1",
  "schemars",
  "serde",
@@ -140,11 +154,12 @@ dependencies = [
 
 [[package]]
 name = "cw-asset"
-version = "1.0.2"
+version = "1.0.3-beta"
 dependencies = [
- "astroport",
+ "astroport 1.0.1",
  "cosmwasm-std",
  "cw20 0.9.1",
+ "mars-core",
  "schemars",
  "serde",
 ]
@@ -154,6 +169,17 @@ name = "cw-storage-plus"
 version = "0.8.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c1e867b9972b83b32e00e878dfbff48299ba26618dabeb19b9c56fae176dc225"
+dependencies = [
+ "cosmwasm-std",
+ "schemars",
+ "serde",
+]
+
+[[package]]
+name = "cw-storage-plus"
+version = "0.9.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a8e401ed71bd64abb9b91151a9ff4f7b34e81b2b3eceab23e3cb67fe47e39938"
 dependencies = [
  "cosmwasm-std",
  "schemars",
@@ -185,6 +211,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "cw2"
+version = "0.9.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3c6380164fb236412ff43c7ca075d95847c6fa8c51b2d3a513c23127a0f2a8f6"
+dependencies = [
+ "cosmwasm-std",
+ "cw-storage-plus 0.9.1",
+ "schemars",
+ "serde",
+]
+
+[[package]]
 name = "cw20"
 version = "0.8.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -206,6 +244,22 @@ dependencies = [
  "cw0 0.9.1",
  "schemars",
  "serde",
+]
+
+[[package]]
+name = "cw20-base"
+version = "0.9.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1b731a291b63cc26d484b159e8469f0965b0082a20e874616f869537b31d64bb"
+dependencies = [
+ "cosmwasm-std",
+ "cw-storage-plus 0.9.1",
+ "cw0 0.9.1",
+ "cw2",
+ "cw20 0.9.1",
+ "schemars",
+ "serde",
+ "thiserror",
 ]
 
 [[package]]
@@ -366,6 +420,22 @@ name = "libc"
 version = "0.2.117"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e74d72e0f9b65b5b4ca49a346af3976df0f9c61d550727f349ecd559f251a26c"
+
+[[package]]
+name = "mars-core"
+version = "1.0.0"
+source = "git+https://github.com/mars-protocol/mars-core?tag=v1.0.0-rc4#7b5fbcc9301b3cbb195098a2a6edb143abb166fc"
+dependencies = [
+ "astroport 0.3.1",
+ "cosmwasm-std",
+ "cw2",
+ "cw20 0.9.1",
+ "cw20-base",
+ "schemars",
+ "serde",
+ "terra-cosmwasm",
+ "thiserror",
+]
 
 [[package]]
 name = "opaque-debug"

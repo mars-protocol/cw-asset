@@ -176,7 +176,7 @@ impl AssetInfo {
     }
 }
 
-#[cfg(feature = "legacy")]
+#[cfg(feature = "astroport")]
 impl From<AssetInfo> for astroport::asset::AssetInfo {
     fn from(info: AssetInfo) -> Self {
         match info {
@@ -190,50 +190,42 @@ impl From<AssetInfo> for astroport::asset::AssetInfo {
     }
 }
 
-#[cfg(feature = "legacy")]
+#[cfg(feature = "astroport")]
 impl From<&AssetInfo> for astroport::asset::AssetInfo {
     fn from(info: &AssetInfo) -> Self {
         info.clone().into()
     }
 }
 
-#[cfg(feature = "legacy")]
+#[cfg(feature = "astroport")]
 impl From<astroport::asset::AssetInfo> for AssetInfo {
     fn from(legacy_info: astroport::asset::AssetInfo) -> Self {
         match legacy_info {
-            astroport::asset::AssetInfo::Token {
-                contract_addr,
-            } => Self::Cw20(contract_addr),
-            astroport::asset::AssetInfo::NativeToken {
-                denom,
-            } => Self::Native(denom),
+            astroport::asset::AssetInfo::Token { contract_addr } => Self::Cw20(contract_addr),
+            astroport::asset::AssetInfo::NativeToken { denom } => Self::Native(denom),
         }
     }
 }
 
-#[cfg(feature = "legacy")]
+#[cfg(feature = "astroport")]
 impl From<&astroport::asset::AssetInfo> for AssetInfo {
     fn from(legacy_info: &astroport::asset::AssetInfo) -> Self {
         legacy_info.clone().into()
     }
 }
 
-#[cfg(feature = "legacy")]
+#[cfg(feature = "astroport")]
 impl std::cmp::PartialEq<AssetInfo> for astroport::asset::AssetInfo {
     fn eq(&self, other: &AssetInfo) -> bool {
         match self {
-            astroport::asset::AssetInfo::Token {
-                contract_addr,
-            } => {
+            astroport::asset::AssetInfo::Token { contract_addr } => {
                 let self_contract_addr = contract_addr;
                 match other {
                     AssetInfo::Cw20(contract_addr) => self_contract_addr == contract_addr,
                     _ => false,
                 }
             }
-            astroport::asset::AssetInfo::NativeToken {
-                denom,
-            } => {
+            astroport::asset::AssetInfo::NativeToken { denom } => {
                 let self_denom = denom;
                 match other {
                     AssetInfo::Native(denom) => self_denom == denom,
@@ -244,10 +236,62 @@ impl std::cmp::PartialEq<AssetInfo> for astroport::asset::AssetInfo {
     }
 }
 
-#[cfg(feature = "legacy")]
+#[cfg(feature = "astroport")]
 impl std::cmp::PartialEq<astroport::asset::AssetInfo> for AssetInfo {
     fn eq(&self, other: &astroport::asset::AssetInfo) -> bool {
         other == self
+    }
+}
+
+#[cfg(feature = "mars")]
+impl From<AssetInfoUnchecked> for mars_core::asset::Asset {
+    fn from(info: AssetInfoUnchecked) -> Self {
+        match info {
+            AssetInfoUnchecked::Cw20(contract_addr) => mars_core::asset::Asset::Cw20 {
+                contract_addr,
+            },
+            AssetInfoUnchecked::Native(denom) => mars_core::asset::Asset::Native {
+                denom,
+            },
+        }
+    }
+}
+
+#[cfg(feature = "mars")]
+impl From<&AssetInfoUnchecked> for mars_core::asset::Asset {
+    fn from(info: &AssetInfoUnchecked) -> Self {
+        info.clone().into()
+    }
+}
+
+#[cfg(feature = "mars")]
+impl From<AssetInfo> for mars_core::asset::Asset {
+    fn from(info: AssetInfo) -> Self {
+        AssetInfoUnchecked::from(info).into()
+    }
+}
+
+#[cfg(feature = "mars")]
+impl From<&AssetInfo> for mars_core::asset::Asset {
+    fn from(info: &AssetInfo) -> Self {
+        info.clone().into()
+    }
+}
+
+#[cfg(feature = "mars")]
+impl From<mars_core::asset::Asset> for AssetInfoUnchecked {
+    fn from(legacy_info: mars_core::asset::Asset) -> Self {
+        match legacy_info {
+            mars_core::asset::Asset::Cw20 { contract_addr } => Self::Cw20(contract_addr),
+            mars_core::asset::Asset::Native { denom } => Self::Native(denom),
+        }
+    }
+}
+
+#[cfg(feature = "mars")]
+impl From<&mars_core::asset::Asset> for AssetInfoUnchecked {
+    fn from(legacy_info: &mars_core::asset::Asset) -> Self {
+        legacy_info.clone().into()
     }
 }
 
@@ -362,12 +406,12 @@ mod test {
     }
 }
 
-#[cfg(all(test, feature = "legacy"))]
-mod tests_legacy {
+#[cfg(all(test, feature = "astroport"))]
+mod tests_astroport {
     use super::*;
 
     #[test]
-    fn casting_legacy() {
+    fn casting_astroport() {
         let legacy_info = astroport::asset::AssetInfo::NativeToken {
             denom: String::from("uusd"),
         };
@@ -392,7 +436,7 @@ mod tests_legacy {
     }
 
     #[test]
-    fn comparing() {
+    fn comparing_astroport() {
         let legacy_info_1 = astroport::asset::AssetInfo::NativeToken {
             denom: String::from("uusd"),
         };
@@ -419,5 +463,33 @@ mod tests_legacy {
         assert_eq!(legacy_info_4 == info_3, false);
         assert_eq!(legacy_info_4 == info_4, true);
         assert_eq!(legacy_info_1 == info_4, false);
+    }
+}
+
+#[cfg(all(test, feature = "mars"))]
+mod tests_mars {
+    use super::*;
+
+    #[test]
+    fn casting_mars() {
+        let legacy_info = mars_core::asset::Asset::Native {
+            denom: String::from("uusd"),
+        };
+        let info = AssetInfoUnchecked::native("uusd");
+
+        assert_eq!(info, AssetInfoUnchecked::from(&legacy_info));
+        assert_eq!(info, AssetInfoUnchecked::from(legacy_info.clone()));
+        assert_eq!(legacy_info, mars_core::asset::Asset::from(&info));
+        assert_eq!(legacy_info, mars_core::asset::Asset::from(info));
+
+        let legacy_info = mars_core::asset::Asset::Cw20 {
+            contract_addr: String::from("mock_token"),
+        };
+        let info = AssetInfoUnchecked::cw20(Addr::unchecked("mock_token"));
+
+        assert_eq!(info, AssetInfoUnchecked::from(&legacy_info));
+        assert_eq!(info, AssetInfoUnchecked::from(legacy_info.clone()));
+        assert_eq!(legacy_info, mars_core::asset::Asset::from(&info));
+        assert_eq!(legacy_info, mars_core::asset::Asset::from(info));
     }
 }

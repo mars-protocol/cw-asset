@@ -319,7 +319,7 @@ impl Asset {
     }
 }
 
-#[cfg(feature = "legacy")]
+#[cfg(feature = "astroport")]
 impl From<Asset> for astroport::asset::Asset {
     fn from(asset: Asset) -> Self {
         Self {
@@ -329,14 +329,14 @@ impl From<Asset> for astroport::asset::Asset {
     }
 }
 
-#[cfg(feature = "legacy")]
+#[cfg(feature = "astroport")]
 impl From<&Asset> for astroport::asset::Asset {
     fn from(asset: &Asset) -> Self {
         asset.clone().into()
     }
 }
 
-#[cfg(feature = "legacy")]
+#[cfg(feature = "astroport")]
 impl From<astroport::asset::Asset> for Asset {
     fn from(legacy_asset: astroport::asset::Asset) -> Self {
         Self {
@@ -346,21 +346,21 @@ impl From<astroport::asset::Asset> for Asset {
     }
 }
 
-#[cfg(feature = "legacy")]
+#[cfg(feature = "astroport")]
 impl From<&astroport::asset::Asset> for Asset {
     fn from(legacy_asset: &astroport::asset::Asset) -> Self {
         legacy_asset.clone().into()
     }
 }
 
-#[cfg(feature = "legacy")]
+#[cfg(feature = "astroport")]
 impl std::cmp::PartialEq<Asset> for astroport::asset::Asset {
     fn eq(&self, other: &Asset) -> bool {
         self.info == other.info && self.amount == other.amount
     }
 }
 
-#[cfg(feature = "legacy")]
+#[cfg(feature = "astroport")]
 impl std::cmp::PartialEq<astroport::asset::Asset> for Asset {
     fn eq(&self, other: &astroport::asset::Asset) -> bool {
         other == self
@@ -604,8 +604,8 @@ mod tests {
     }
 }
 
-#[cfg(all(test, feature = "legacy"))]
-mod tests_legacy {
+#[cfg(all(test, feature = "astroport"))]
+mod tests_astroport {
     use super::*;
 
     fn legacy_uusd() -> astroport::asset::AssetInfo {
@@ -621,7 +621,7 @@ mod tests_legacy {
     }
 
     #[test]
-    fn casting_legacy() {
+    fn casting_astroport() {
         let legacy_asset = astroport::asset::Asset {
             info: legacy_uusd(),
             amount: Uint128::new(69420),
@@ -636,7 +636,7 @@ mod tests_legacy {
     }
 
     #[test]
-    fn comparing() {
+    fn comparing_astroport() {
         let legacy_asset_1 = astroport::asset::Asset {
             info: legacy_uusd(),
             amount: Uint128::new(69420),
