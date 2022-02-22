@@ -419,7 +419,11 @@ impl AssetList {
     }
 }
 
-#[cfg(feature = "legacy")]
+//--------------------------------------------------------------------------------------------------
+// Optional Feature: Astroport Legacy Support
+//--------------------------------------------------------------------------------------------------
+
+#[cfg(feature = "astroport")]
 impl AssetList {
     /// Create an `AssetList` instance from an array of Astroport assets
     /// 
@@ -443,6 +447,10 @@ impl AssetList {
             .map_err(|_| StdError::generic_err(format!("failed to map AssetList to legacy: {}", self)))
     }
 }
+
+//--------------------------------------------------------------------------------------------------
+// Tests
+//--------------------------------------------------------------------------------------------------
 
 #[cfg(test)]
 mod test_helpers {

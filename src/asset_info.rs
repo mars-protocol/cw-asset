@@ -176,6 +176,10 @@ impl AssetInfo {
     }
 }
 
+//--------------------------------------------------------------------------------------------------
+// Optional Feature: Astroport Legacy Support
+//--------------------------------------------------------------------------------------------------
+
 #[cfg(feature = "astroport")]
 impl From<AssetInfo> for astroport::asset::AssetInfo {
     fn from(info: AssetInfo) -> Self {
@@ -257,6 +261,10 @@ impl From<AssetInfoUnchecked> for mars_core::asset::Asset {
     }
 }
 
+//--------------------------------------------------------------------------------------------------
+// Optional Feature: Mars Legacy Support
+//--------------------------------------------------------------------------------------------------
+
 #[cfg(feature = "mars")]
 impl From<&AssetInfoUnchecked> for mars_core::asset::Asset {
     fn from(info: &AssetInfoUnchecked) -> Self {
@@ -294,6 +302,10 @@ impl From<&mars_core::asset::Asset> for AssetInfoUnchecked {
         legacy_info.clone().into()
     }
 }
+
+//--------------------------------------------------------------------------------------------------
+// Tests
+//--------------------------------------------------------------------------------------------------
 
 #[cfg(test)]
 mod test {
