@@ -1,6 +1,6 @@
 use std::fmt;
 use std::str::FromStr;
-#[cfg(feature = "legacy")]
+#[cfg(feature = "astroport")]
 use std::convert::TryInto;
 
 use cosmwasm_std::{Addr, Api, Coin, CosmosMsg, StdError, StdResult};
@@ -678,8 +678,8 @@ mod tests {
     }
 }
 
-#[cfg(all(test, feature = "legacy"))]
-mod tests_legacy {
+#[cfg(all(test, feature = "astroport"))]
+mod tests_astroport {
     use super::test_helpers::mock_list;
     use super::*;
     use cosmwasm_std::Uint128;
