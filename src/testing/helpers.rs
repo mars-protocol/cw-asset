@@ -1,3 +1,5 @@
+use std::marker::PhantomData;
+
 use cosmwasm_std::testing::{MockApi, MockStorage};
 use cosmwasm_std::OwnedDeps;
 
@@ -8,5 +10,6 @@ pub fn mock_dependencies() -> OwnedDeps<MockStorage, MockApi, CustomMockQuerier>
         storage: MockStorage::default(),
         api: MockApi::default(),
         querier: CustomMockQuerier::default(),
+        custom_query_type: PhantomData,
     }
 }

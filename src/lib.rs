@@ -82,28 +82,6 @@
 //!     Ok(())
 //! }
 //! ```
-//!
-//! ## Legacy feature
-//!
-//! Some projects may still use their legacy asset types. Enabling the `astroport` or `mars` 
-//! features imports methods that cast `Asset` into these legacy types used by these projects.
-//!
-//! In `Cargo.toml`:
-//!
-//! ```toml
-//! [dependencies]
-//! cw-asset = { version = "^1.0", features = ["astroport"] }
-//! ```
-//!
-//! In the contract:
-//!
-//! ```rust
-//! use astroport::asset::Asset as AstroportAsset;
-//! use cw_asset::Asset;
-//!
-//! let asset = Asset::native("uusd", 12345u128);
-//! let legacy_asset: AstroportAsset = asset.into();
-//! ```
 mod asset;
 mod asset_info;
 mod asset_list;

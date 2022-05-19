@@ -320,58 +320,6 @@ impl Asset {
 }
 
 //--------------------------------------------------------------------------------------------------
-// Optional Feature: Astroport Legacy Support
-//--------------------------------------------------------------------------------------------------
-
-#[cfg(feature = "astroport")]
-impl From<Asset> for astroport::asset::Asset {
-    fn from(asset: Asset) -> Self {
-        Self {
-            info: asset.info.into(),
-            amount: asset.amount,
-        }
-    }
-}
-
-#[cfg(feature = "astroport")]
-impl From<&Asset> for astroport::asset::Asset {
-    fn from(asset: &Asset) -> Self {
-        asset.clone().into()
-    }
-}
-
-#[cfg(feature = "astroport")]
-impl From<astroport::asset::Asset> for Asset {
-    fn from(legacy_asset: astroport::asset::Asset) -> Self {
-        Self {
-            info: legacy_asset.info.into(),
-            amount: legacy_asset.amount,
-        }
-    }
-}
-
-#[cfg(feature = "astroport")]
-impl From<&astroport::asset::Asset> for Asset {
-    fn from(legacy_asset: &astroport::asset::Asset) -> Self {
-        legacy_asset.clone().into()
-    }
-}
-
-#[cfg(feature = "astroport")]
-impl std::cmp::PartialEq<Asset> for astroport::asset::Asset {
-    fn eq(&self, other: &Asset) -> bool {
-        self.info == other.info && self.amount == other.amount
-    }
-}
-
-#[cfg(feature = "astroport")]
-impl std::cmp::PartialEq<astroport::asset::Asset> for Asset {
-    fn eq(&self, other: &astroport::asset::Asset) -> bool {
-        other == self
-    }
-}
-
-//--------------------------------------------------------------------------------------------------
 // Tests
 //--------------------------------------------------------------------------------------------------
 
@@ -609,59 +557,5 @@ mod tests {
             err,
             Err(StdError::generic_err("native coins do not have `transfer_from` method"))
         );
-    }
-}
-
-#[cfg(all(test, feature = "astroport"))]
-mod tests_astroport {
-    use super::*;
-
-    fn legacy_uusd() -> astroport::asset::AssetInfo {
-        astroport::asset::AssetInfo::NativeToken {
-            denom: String::from("uusd"),
-        }
-    }
-
-    fn legacy_uluna() -> astroport::asset::AssetInfo {
-        astroport::asset::AssetInfo::NativeToken {
-            denom: String::from("uluna"),
-        }
-    }
-
-    #[test]
-    fn casting_astroport() {
-        let legacy_asset = astroport::asset::Asset {
-            info: legacy_uusd(),
-            amount: Uint128::new(69420),
-        };
-
-        let asset = Asset::native("uusd", 69420u128);
-
-        assert_eq!(asset, Asset::from(&legacy_asset));
-        assert_eq!(asset, Asset::from(legacy_asset.clone()));
-        assert_eq!(legacy_asset, astroport::asset::Asset::from(&asset));
-        assert_eq!(legacy_asset, astroport::asset::Asset::from(asset));
-    }
-
-    #[test]
-    fn comparing_astroport() {
-        let legacy_asset_1 = astroport::asset::Asset {
-            info: legacy_uusd(),
-            amount: Uint128::new(69420),
-        };
-        let legacy_asset_2 = astroport::asset::Asset {
-            info: legacy_uusd(),
-            amount: Uint128::new(88888),
-        };
-        let legacy_asset_3 = astroport::asset::Asset {
-            info: legacy_uluna(),
-            amount: Uint128::new(69420),
-        };
-
-        let asset = Asset::native("uusd", 69420u128);
-
-        assert_eq!(legacy_asset_1 == asset, true);
-        assert_eq!(legacy_asset_2 == asset, false);
-        assert_eq!(legacy_asset_3 == asset, false);
     }
 }
