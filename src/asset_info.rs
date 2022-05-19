@@ -91,10 +91,10 @@ impl AssetInfoUnchecked {
     /// Validate data contained in an _unchecked_ **asset info** instance; return a new _checked_
     /// **asset info** instance:
     /// * For CW20 tokens, assert the contract address is valid
-    /// * For SDK coins, assert that the denom is included in a given whitelist; skip if the 
+    /// * For SDK coins, assert that the denom is included in a given whitelist; skip if the
     ///   whitelist is not provided
-    /// 
-    /// 
+    ///
+    ///
     /// ```rust
     /// use cosmwasm_std::{Addr, Api, StdResult};
     /// use cw_asset::{AssetInfo, AssetInfoUnchecked};
@@ -260,7 +260,7 @@ mod test {
 
         let unchecked = AssetInfoUnchecked::native("uatom");
         assert_eq!(
-            unchecked.check(&api, Some(&["uusd", "uluna", "uosmo"])), 
+            unchecked.check(&api, Some(&["uusd", "uluna", "uosmo"])),
             Err(StdError::generic_err("invalid denom uatom; must be uusd|uluna|uosmo")),
         );
     }

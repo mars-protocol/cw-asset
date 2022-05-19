@@ -54,7 +54,7 @@ impl AssetListUnchecked {
     /// Validate data contained in an _unchecked_ **asset list** instance, return a new _checked_
     /// **asset list** instance:
     /// * For CW20 tokens, assert the contract address is valid
-    /// * For SDK coins, assert that the denom is included in a given whitelist; skip if the 
+    /// * For SDK coins, assert that the denom is included in a given whitelist; skip if the
     ///   whitelist is not provided
     ///
     /// ```rust
@@ -440,7 +440,7 @@ mod test_helpers {
 
     pub fn mock_list() -> AssetList {
         AssetList::from(vec![
-            Asset::native("uusd", 69420u128), 
+            Asset::native("uusd", 69420u128),
             Asset::new(mock_token(), 88888u128),
         ])
     }
@@ -530,7 +530,7 @@ mod tests {
 
         let checked = mock_list();
         let unchecked = AssetListBase(vec![
-            AssetUnchecked::native("uusd", 69420u128), 
+            AssetUnchecked::native("uusd", 69420u128),
             AssetUnchecked::cw20("MOCK_TOKEN", 88888u128),
         ]);
 

@@ -207,7 +207,7 @@ impl Asset {
     /// Generate a message that sends a CW20 token to the specified recipient with a binary payload
     ///
     /// NOTE: Only works for CW20 tokens. Returns error if invoked on an [`Asset`] instance
-    /// representing a native coin, as native coins do not have an equivalent method mplemented.  
+    /// representing a native coin, as native coins do not have an equivalent method mplemented.
     ///
     /// ```rust
     /// use serde::Serialize;
@@ -283,7 +283,7 @@ impl Asset {
     /// specified by [`to`]
     ///
     /// NOTE: Only works for CW20 tokens. Returns error if invoked on an [`Asset`] instance
-    /// representing a native coin, as native coins do not have an equivalent method mplemented.  
+    /// representing a native coin, as native coins do not have an equivalent method mplemented.
     ///
     /// ```rust
     /// use cosmwasm_std::{Addr, Response, StdResult};
@@ -377,11 +377,11 @@ mod tests {
 
         let astro = Asset::cw20(Addr::unchecked("astro_token"), 69u128);
         assert_eq!(
-            Coin::try_from(&astro), 
+            Coin::try_from(&astro),
             Err(StdError::generic_err("cannot cast asset cw20:astro_token:69 into cosmwasm_std::Coin"))
         );
         assert_eq!(
-            Coin::try_from(astro), 
+            Coin::try_from(astro),
             Err(StdError::generic_err("cannot cast asset cw20:astro_token:69 into cosmwasm_std::Coin"))
         );
     }
@@ -423,7 +423,7 @@ mod tests {
     fn from_string() {
         let s = "native:uusd:12345:67890";
         assert_eq!(
-            AssetUnchecked::from_str(s), 
+            AssetUnchecked::from_str(s),
             Err(StdError::generic_err("invalid asset format `native:uusd:12345:67890`; must be in format `native:{denom}:{amount}` or `cw20:{contract_addr}:{amount}`")),
         );
 
