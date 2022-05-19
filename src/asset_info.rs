@@ -61,7 +61,7 @@ impl FromStr for AssetInfoUnchecked {
     type Err = StdError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let words: Vec<&str> = s.split(":").collect();
+        let words: Vec<&str> = s.split(':').collect();
         if words.len() != 2 {
             return Err(StdError::generic_err(
                 format!("invalid asset info format `{}`; must be in format `native:{{denom}}` or `cw20:{{contract_addr}}`", s)

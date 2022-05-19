@@ -90,7 +90,7 @@ impl FromStr for AssetUnchecked {
     type Err = StdError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let words: Vec<&str> = s.split(":").collect();
+        let words: Vec<&str> = s.split(':').collect();
         if words.len() != 3 {
             return Err(StdError::generic_err(
                 format!("invalid asset format `{}`; must be in format `native:{{denom}}:{{amount}}` or `cw20:{{contract_addr}}:{{amount}}`", s)
@@ -173,7 +173,7 @@ impl TryFrom<Asset> for Coin {
                 amount: asset.amount,
             }),
             AssetInfo::Cw20(_) => Err(StdError::generic_err(
-                format!("cannot cast asset {} into cosmwasm_std::Coin", asset.to_string())
+                format!("cannot cast asset {} into cosmwasm_std::Coin", asset)
             )),
         }
     }

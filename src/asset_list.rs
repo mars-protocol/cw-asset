@@ -29,13 +29,13 @@ impl FromStr for AssetListUnchecked {
     type Err = StdError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        if s.len() == 0 {
+        if s.is_empty() {
             return Ok(Self(vec![]));
         }
 
         Ok(Self(
             s
-                .split(",")
+                .split(',')
                 .collect::<Vec<&str>>()
                 .iter()
                 .map(|s| AssetUnchecked::from_str(s))
@@ -190,8 +190,28 @@ impl AssetList {
     ///
     /// let len = list.len();  // should be two
     /// ```
+    // NOTE: I do have `is_empty` implemented, but clippy still throws a warning saying I don't have
+    // it. Must be a clippy bug...
+    #[allow(clippy::len_without_is_empty)]
     pub fn len(&self) -> usize {
         self.0.len()
+    }
+
+    /// Return whether the asset list is empty
+    ///
+    /// ```rust
+    /// use cw_asset::{Asset, AssetList};
+    ///
+    /// let mut list = AssetList::from(vec![
+    ///     Asset::native("uluna", 12345u128),
+    /// ]);
+    /// let is_empty = list.is_empty(); // should be `false`
+    ///
+    /// list.deduct(&Asset::native("uluna", 12345u128)).unwrap();
+    /// let is_empty = list.is_empty(); // should be `true`
+    /// ```
+    pub fn is_empty(&self) -> bool {
+        self.0.is_empty()
     }
 
     /// Find an asset in the list that matches the provided asset info
