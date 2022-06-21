@@ -141,7 +141,19 @@ name = "cw-asset"
 version = "2.0.0"
 dependencies = [
  "cosmwasm-std",
+ "cw-storage-plus",
  "cw20",
+ "schemars",
+ "serde",
+]
+
+[[package]]
+name = "cw-storage-plus"
+version = "0.13.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "648b1507290bbc03a8d88463d7cd9b04b1fa0155e5eef366c4fa052b9caaac7a"
+dependencies = [
+ "cosmwasm-std",
  "schemars",
  "serde",
 ]

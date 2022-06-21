@@ -1,3 +1,4 @@
+use std::error::Error;
 use std::fmt;
 use std::str::FromStr;
 
@@ -6,9 +7,31 @@ use cosmwasm_std::{
     StdResult, Uint128, WasmQuery,
 };
 use cw20::{BalanceResponse as Cw20BalanceResponse, Cw20QueryMsg};
+use cw_storage_plus::{Key, KeyDeserialize, PrimaryKey};
 
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
+
+
+
+fn deserialize<T>(s: &str, str_deserializer: fn(&str) -> T) -> StdResult<AssetInfoBase<T>> {
+    let words: Vec<&str> = s.split(':').collect();
+    if words.len() != 2 {
+        return Err(StdError::generic_err(
+            format!("invalid asset info format `{}`; must be in format `native:{{denom}}` or `cw20:{{contract_addr}}`", s)
+        ));
+    }
+
+    match words[0] {
+        "native" => Ok(AssetInfoBase::Native(String::from(words[1]))),
+        "cw20" => {
+            Ok(AssetInfoBase::Cw20(str_deserializer(words[1])))
+        },
+        ty => Err(StdError::generic_err(
+            format!("invalid asset type `{}`; must be `native` or `cw20`", ty)
+        ))
+    }
+}
 
 /// Represents the type of an fungible asset
 ///
@@ -52,29 +75,39 @@ impl<T> AssetInfoBase<T> {
     }
 }
 
+
 /// Represents an **asset info** instance that may contain unverified data; to be used in messages
 pub type AssetInfoUnchecked = AssetInfoBase<String>;
 /// Represents an **asset info** instance containing only verified data; to be saved in contract storage
 pub type AssetInfo = AssetInfoBase<Addr>;
 
+impl<'a> PrimaryKey<'a> for AssetInfo {
+    type Prefix = ();
+    type SubPrefix = ();
+    type Suffix = Self;
+    type SuperSuffix = Self;
+
+    fn key(&self) -> Vec<Key> {
+        // 💣 cannot return value referencing temporary value E0515
+        vec![Key::Ref(self.to_string().as_bytes())]
+    }
+}
+
+impl KeyDeserialize for AssetInfo {
+    type Output = Self;
+
+    #[inline(always)]
+    fn from_vec(value: Vec<u8>) -> StdResult<Self::Output> {
+        deserialize(&String::from_utf8(value)?, |x|  { Addr::unchecked(x) })
+    }
+}
+
+
 impl FromStr for AssetInfoUnchecked {
     type Err = StdError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let words: Vec<&str> = s.split(':').collect();
-        if words.len() != 2 {
-            return Err(StdError::generic_err(
-                format!("invalid asset info format `{}`; must be in format `native:{{denom}}` or `cw20:{{contract_addr}}`", s)
-            ));
-        }
-
-        match words[0] {
-            "native" => Ok(AssetInfoUnchecked::Native(String::from(words[1]))),
-            "cw20" => Ok(AssetInfoUnchecked::Cw20(String::from(words[1]))),
-            ty => Err(StdError::generic_err(
-                format!("invalid asset type `{}`; must be `native` or `cw20`", ty)
-            ))
-        }
+        deserialize(s, |x|  { String::from(x) } )
     }
 }
 
@@ -288,5 +321,20 @@ mod test {
         let info2 = AssetInfo::cw20(Addr::unchecked("mock_token"));
         let balance2 = info2.query_balance(&deps.as_ref().querier, "bob").unwrap();
         assert_eq!(balance2, Uint128::new(67890));
+    }
+
+    #[test]
+    fn primary_key() {
+        let cw20_asset = AssetInfo::cw20(Addr::unchecked("address123"));
+        let native_asset = AssetInfo::native(Addr::unchecked("uosmo"));
+
+        // TODO: finish writing tests
+        // assert_eq!(cw20_asset.key(), "address123");
+        // assert_eq!(1, cw20_asset.len());
+        // assert_eq!(b"hello", path[0].as_ref());
+
+        // assert_eq!(native_asset.key(), "uosmo");
+        // assert_eq!(1, path.len());
+        // assert_eq!(b"hello", path[0].as_ref());
     }
 }
