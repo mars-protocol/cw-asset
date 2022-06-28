@@ -1,5 +1,5 @@
 #![forbid(unsafe_code)]
-//! A unified representation of various types of Cosmos fungible assets, and helper functions for  
+//! A unified representation of various types of Cosmos fungible assets, and helper functions for
 //! interacting with them
 //!
 //! ## Basic usage
@@ -74,7 +74,7 @@
 //! ```rust
 //! use cosmwasm_std::{Api, StdResult};
 //! use cw_asset::{Asset, AssetUnchecked};
-//! 
+//!
 //! const ACCEPTED_DENOMS: &[&str] = &["uatom", "uosmo", "uluna"];
 //!
 //! fn validate_deposit(api: &dyn Api, asset_unchecked: AssetUnchecked) -> StdResult<()> {
@@ -85,6 +85,7 @@
 mod asset;
 mod asset_info;
 mod asset_list;
+mod key;
 
 pub use asset::*;
 pub use asset_info::*;
