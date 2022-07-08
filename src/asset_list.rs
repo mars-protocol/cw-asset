@@ -34,12 +34,11 @@ impl FromStr for AssetListUnchecked {
         }
 
         Ok(Self(
-            s
-                .split(',')
+            s.split(',')
                 .collect::<Vec<&str>>()
                 .iter()
                 .map(|s| AssetUnchecked::from_str(s))
-                .collect::<Result<Vec<AssetUnchecked>, Self::Err>>()?
+                .collect::<Result<Vec<AssetUnchecked>, Self::Err>>()?,
         ))
     }
 }
@@ -68,12 +67,16 @@ impl AssetListUnchecked {
     ///     }
     /// }
     /// ```
-    pub fn check(&self, api: &dyn Api, optional_whitelist: Option<&[&str]>) -> StdResult<AssetList> {
+    pub fn check(
+        &self,
+        api: &dyn Api,
+        optional_whitelist: Option<&[&str]>,
+    ) -> StdResult<AssetList> {
         Ok(AssetList::from(
             self.0
                 .iter()
                 .map(|asset| asset.check(api, optional_whitelist))
-                .collect::<StdResult<Vec<Asset>>>()?
+                .collect::<StdResult<Vec<Asset>>>()?,
         ))
     }
 }
@@ -378,9 +381,10 @@ impl AssetList {
                 asset.amount = asset.amount.checked_sub(asset_to_deduct.amount)?;
             }
             None => {
-                return Err(StdError::generic_err(
-                    format!("not found in asset list: {}", asset_to_deduct.info)
-                ));
+                return Err(StdError::generic_err(format!(
+                    "not found in asset list: {}",
+                    asset_to_deduct.info
+                )));
             }
         }
         Ok(self.purge())
@@ -459,10 +463,7 @@ mod test_helpers {
     }
 
     pub fn mock_list() -> AssetList {
-        AssetList::from(vec![
-            Asset::native("uusd", 69420u128),
-            Asset::new(mock_token(), 88888u128),
-        ])
+        AssetList::from(vec![Asset::native("uusd", 69420u128), Asset::new(mock_token(), 88888u128)])
     }
 }
 
@@ -492,13 +493,17 @@ mod tests {
         let s = "native:uusd:69420,cw721:galactic_punk:1";
         assert_eq!(
             AssetListUnchecked::from_str(s),
-            Err(StdError::generic_err("invalid asset type `cw721`; must be `native` or `cw20`")),
+            Err(StdError::generic_err(
+                "invalid asset type `cw721`; must be `native` or `cw20` or `cw1155`"
+            )),
         );
 
         let s = "native:uusd:69420,cw20:mock_token:ngmi";
         assert_eq!(
             AssetListUnchecked::from_str(s),
-            Err(StdError::generic_err("invalid asset amount `ngmi`; must be a 128-bit unsigned integer")),
+            Err(StdError::generic_err(
+                "invalid asset amount `ngmi`; must be a 128-bit unsigned integer"
+            )),
         );
 
         let s = "native:uusd:69420,cw20:mock_token:88888";
@@ -524,10 +529,10 @@ mod tests {
         let list = mock_list();
 
         let strs: Vec<String> = list.into_iter().map(|asset| asset.to_string()).collect();
-        assert_eq!(strs, vec![
-            String::from("native:uusd:69420"),
-            String::from("cw20:mock_token:88888"),
-        ]);
+        assert_eq!(
+            strs,
+            vec![String::from("native:uusd:69420"), String::from("cw20:mock_token:88888"),]
+        );
     }
 
     #[test]

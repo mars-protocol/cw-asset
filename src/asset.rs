@@ -5,6 +5,7 @@ use std::str::FromStr;
 use cosmwasm_std::{
     to_binary, Addr, Api, BankMsg, Binary, Coin, CosmosMsg, StdError, StdResult, Uint128, WasmMsg,
 };
+use cw1155::Cw1155ExecuteMsg;
 use cw20::Cw20ExecuteMsg;
 
 use schemars::JsonSchema;
@@ -66,6 +67,29 @@ impl<T> AssetBase<T> {
         }
     }
 
+    /// Create a new **asset** instance representing a CW1155 token of given contract address, token_id and amount
+    ///
+    /// To create an unchecked instance, provide the contract address in any of the following types:
+    /// [`cosmwasm_std::Addr`], [`String`], or [`&str`]; to create a checked instance, the address
+    /// must of type [`cosmwasm_std::Addr`].
+    ///
+    /// ```rust
+    /// use cosmwasm_std::Addr;
+    /// use cw_asset::Asset;
+    ///
+    /// let asset = Asset::cw1155(Addr::unchecked("contract_mock"), String::from("mock_token"), 12345u128);
+    /// ```
+    pub fn cw1155<A: Into<T>, B: Into<String>, C: Into<Uint128>>(
+        contract_addr: A,
+        token_id: B,
+        amount: C,
+    ) -> Self {
+        Self {
+            info: AssetInfoBase::cw1155(contract_addr, token_id),
+            amount: amount.into(),
+        }
+    }
+
     /// Create a new **asset** instance representing a native coin of given denom and amount
     ///
     /// ```rust
@@ -91,20 +115,43 @@ impl FromStr for AssetUnchecked {
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let words: Vec<&str> = s.split(':').collect();
-        if words.len() != 3 {
-            return Err(StdError::generic_err(
-                format!("invalid asset format `{}`; must be in format `native:{{denom}}:{{amount}}` or `cw20:{{contract_addr}}:{{amount}}`", s)
-            ));
-        }
 
-        let info = AssetInfoUnchecked::from_str(&format!("{}:{}", words[0], words[1]))?;
-        let amount = Uint128::from_str(words[2]).map_err(
-            |_| StdError::generic_err(
-                format!("invalid asset amount `{}`; must be a 128-bit unsigned integer", words[2])
-            )
-        )?;
+        let info = match words[0] {
+            "cw20" | "native" => {
+                if words.len() != 3 {
+                    return Err(StdError::generic_err(
+                        format!("invalid asset format `{}`; must be in format `native:{{denom}}:{{amount}}` or `cw20:{{contract_addr}}:{{amount}}`", s)
+                    ));
+                }
+                AssetInfoUnchecked::from_str(&format!("{}:{}", words[0], words[1]))?
+            }
+            "cw1155" => {
+                if words.len() != 4 {
+                    return Err(StdError::generic_err(
+                        format!("invalid asset format `{}`; must be in format `cw1155:{{contract_addr}}:{{token_id}}:{{amount}}`", s)
+                    ));
+                }
+                AssetInfoUnchecked::from_str(&format!("{}:{}:{}", words[0], words[1], words[2]))?
+            }
+            ty => {
+                return Err(StdError::generic_err(format!(
+                    "invalid asset type `{}`; must be `native` or `cw20` or `cw1155`",
+                    ty
+                )));
+            }
+        };
 
-        Ok(AssetUnchecked { info, amount })
+        let amount = Uint128::from_str(words[words.len() - 1]).map_err(|_| {
+            StdError::generic_err(format!(
+                "invalid asset amount `{}`; must be a 128-bit unsigned integer",
+                words[words.len() - 1]
+            ))
+        })?;
+
+        Ok(AssetUnchecked {
+            info,
+            amount,
+        })
     }
 }
 
@@ -172,9 +219,14 @@ impl TryFrom<Asset> for Coin {
                 denom: denom.clone(),
                 amount: asset.amount,
             }),
-            AssetInfo::Cw20(_) => Err(StdError::generic_err(
-                format!("cannot cast asset {} into cosmwasm_std::Coin", asset)
-            )),
+            AssetInfo::Cw20(_) => Err(StdError::generic_err(format!(
+                "cannot cast asset {} into cosmwasm_std::Coin",
+                asset
+            ))),
+            AssetInfo::Cw1155(..) => Err(StdError::generic_err(format!(
+                "cannot cast asset {} into cosmwasm_std::Coin",
+                asset
+            ))),
         }
     }
 }
@@ -189,10 +241,9 @@ impl TryFrom<&Asset> for Coin {
 impl std::cmp::PartialEq<Asset> for Coin {
     fn eq(&self, other: &Asset) -> bool {
         match &other.info {
-            AssetInfo::Native(denom) => {
-                self.denom == *denom && self.amount == other.amount
-            }
-            AssetInfo::Cw20(_) => false
+            AssetInfo::Native(denom) => self.denom == *denom && self.amount == other.amount,
+            AssetInfo::Cw20(_) => false,
+            AssetInfo::Cw1155(..) => false,
         }
     }
 }
@@ -239,6 +290,9 @@ impl Asset {
                 })?,
                 funds: vec![],
             })),
+            AssetInfo::Cw1155(..) => {
+                Err(StdError::generic_err("cw1155 does not have `send` method. use `draw` instead"))
+            }
             AssetInfo::Native(_) => {
                 Err(StdError::generic_err("native coins do not have `send` method"))
             }
@@ -269,6 +323,9 @@ impl Asset {
                 })?,
                 funds: vec![],
             })),
+            AssetInfo::Cw1155(..) => Err(StdError::generic_err(
+                "cw1155 does not have `transfer` method. use `draw` instead",
+            )),
             AssetInfo::Native(denom) => Ok(CosmosMsg::Bank(BankMsg::Send {
                 to_address: to.into(),
                 amount: vec![Coin {
@@ -309,6 +366,17 @@ impl Asset {
                     owner: from.into(),
                     recipient: to.into(),
                     amount: self.amount,
+                })?,
+                funds: vec![],
+            })),
+            AssetInfo::Cw1155(contract_addr, token_id) => Ok(CosmosMsg::Wasm(WasmMsg::Execute {
+                contract_addr: contract_addr.into(),
+                msg: to_binary(&Cw1155ExecuteMsg::SendFrom {
+                    from: from.into(),
+                    to: to.into(),
+                    token_id: token_id.into(),
+                    value: self.amount,
+                    msg: None,
                 })?,
                 funds: vec![],
             })),
@@ -370,7 +438,7 @@ mod tests {
         let uusd = Asset::native("uusd", 69u128);
         let uusd_coin = Coin {
             denom: String::from("uusd"),
-            amount: Uint128::new(69)
+            amount: Uint128::new(69),
         };
         assert_eq!(Coin::try_from(&uusd).unwrap(), uusd_coin);
         assert_eq!(Coin::try_from(uusd).unwrap(), uusd_coin);
@@ -378,11 +446,15 @@ mod tests {
         let astro = Asset::cw20(Addr::unchecked("astro_token"), 69u128);
         assert_eq!(
             Coin::try_from(&astro),
-            Err(StdError::generic_err("cannot cast asset cw20:astro_token:69 into cosmwasm_std::Coin"))
+            Err(StdError::generic_err(
+                "cannot cast asset cw20:astro_token:69 into cosmwasm_std::Coin"
+            ))
         );
         assert_eq!(
             Coin::try_from(astro),
-            Err(StdError::generic_err("cannot cast asset cw20:astro_token:69 into cosmwasm_std::Coin"))
+            Err(StdError::generic_err(
+                "cannot cast asset cw20:astro_token:69 into cosmwasm_std::Coin"
+            ))
         );
     }
 
@@ -405,7 +477,7 @@ mod tests {
         let uusd_2 = Asset::native("uusd", 420u128);
         let uusd_coin = Coin {
             denom: String::from("uusd"),
-            amount: Uint128::new(69)
+            amount: Uint128::new(69),
         };
         let astro = Asset::cw20(Addr::unchecked("astro_token"), 69u128);
 
@@ -421,6 +493,14 @@ mod tests {
 
     #[test]
     fn from_string() {
+        let s = "";
+        assert_eq!(
+            AssetUnchecked::from_str(s),
+            Err(StdError::generic_err(
+                "invalid asset type ``; must be `native` or `cw20` or `cw1155`"
+            )),
+        );
+
         let s = "native:uusd:12345:67890";
         assert_eq!(
             AssetUnchecked::from_str(s),
@@ -430,20 +510,21 @@ mod tests {
         let s = "cw721:galactic_punk:1";
         assert_eq!(
             AssetUnchecked::from_str(s),
-            Err(StdError::generic_err("invalid asset type `cw721`; must be `native` or `cw20`")),
+            Err(StdError::generic_err(
+                "invalid asset type `cw721`; must be `native` or `cw20` or `cw1155`"
+            )),
         );
 
         let s = "native:uusd:ngmi";
         assert_eq!(
             AssetUnchecked::from_str(s),
-            Err(StdError::generic_err("invalid asset amount `ngmi`; must be a 128-bit unsigned integer")),
+            Err(StdError::generic_err(
+                "invalid asset amount `ngmi`; must be a 128-bit unsigned integer"
+            )),
         );
 
         let s = "native:uusd:12345";
-        assert_eq!(
-            AssetUnchecked::from_str(s).unwrap(),
-            AssetUnchecked::native("uusd", 12345u128),
-        );
+        assert_eq!(AssetUnchecked::from_str(s).unwrap(), AssetUnchecked::native("uusd", 12345u128),);
 
         let s = "cw20:mock_token:12345";
         assert_eq!(
@@ -494,6 +575,7 @@ mod tests {
     fn creating_messages() {
         let token = Asset::cw20(Addr::unchecked("mock_token"), 123456u128);
         let coin = Asset::native("uusd", 123456u128);
+        let multi_token = Asset::cw1155(Addr::unchecked("mock_contract"), "mock_token", 123456u128);
 
         let bin_msg = to_binary(&MockExecuteMsg::MockCommand {}).unwrap();
         let msg = token.send_msg("mock_contract", bin_msg.clone()).unwrap();
@@ -551,11 +633,27 @@ mod tests {
                 funds: vec![]
             })
         );
-
         let err = coin.transfer_from_msg("bob", "charlie");
         assert_eq!(
             err,
             Err(StdError::generic_err("native coins do not have `transfer_from` method"))
+        );
+
+        let msg = multi_token.transfer_from_msg("bob", "charlie").unwrap();
+        assert_eq!(
+            msg,
+            CosmosMsg::Wasm(WasmMsg::Execute {
+                contract_addr: String::from("mock_contract"),
+                msg: to_binary(&Cw1155ExecuteMsg::SendFrom {
+                    from: "bob".into(),
+                    to: "charlie".into(),
+                    token_id: "mock_token".to_string(),
+                    value: multi_token.amount,
+                    msg: None
+                })
+                .unwrap(),
+                funds: vec![]
+            })
         );
     }
 }
