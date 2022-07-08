@@ -531,6 +531,12 @@ mod tests {
             AssetUnchecked::from_str(s).unwrap(),
             AssetUnchecked::cw20("mock_token", 12345u128),
         );
+
+        let s = "cw1155:mock_contract:mock_token:12345";
+        assert_eq!(
+            AssetUnchecked::from_str(s).unwrap(),
+            AssetUnchecked::cw1155("mock_contract", "mock_token", 12345u128),
+        );
     }
 
     #[test]
@@ -540,6 +546,9 @@ mod tests {
 
         let asset = Asset::cw20(Addr::unchecked("mock_token"), 88888u128);
         assert_eq!(asset.to_string(), String::from("cw20:mock_token:88888"));
+
+        let asset = Asset::cw1155(Addr::unchecked("mock_contract"), "mock_token", 88888u128);
+        assert_eq!(asset.to_string(), String::from("cw1155:mock_contract:mock_token:88888"));
     }
 
     #[test]
