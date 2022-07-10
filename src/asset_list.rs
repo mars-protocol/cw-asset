@@ -33,13 +33,14 @@ impl FromStr for AssetListUnchecked {
             return Ok(Self(vec![]));
         }
 
-        Ok(Self(
-            s.split(',')
-                .collect::<Vec<&str>>()
-                .iter()
-                .map(|s| AssetUnchecked::from_str(s))
-                .collect::<Result<Vec<AssetUnchecked>, Self::Err>>()?,
-        ))
+        let assets = s
+            .split(',')
+            .collect::<Vec<&str>>()
+            .iter()
+            .map(|s| AssetUnchecked::from_str(s))
+            .collect::<Result<Vec<AssetUnchecked>, Self::Err>>()?;
+
+        Ok(Self(assets))
     }
 }
 
@@ -72,12 +73,12 @@ impl AssetListUnchecked {
         api: &dyn Api,
         optional_whitelist: Option<&[&str]>,
     ) -> StdResult<AssetList> {
-        Ok(AssetList::from(
-            self.0
-                .iter()
-                .map(|asset| asset.check(api, optional_whitelist))
-                .collect::<StdResult<Vec<Asset>>>()?,
-        ))
+        let assets = self.0
+            .iter()
+            .map(|asset| asset.check(api, optional_whitelist))
+            .collect::<StdResult<Vec<Asset>>>()?;
+
+        Ok(AssetList::from(assets))
     }
 }
 
@@ -381,10 +382,9 @@ impl AssetList {
                 asset.amount = asset.amount.checked_sub(asset_to_deduct.amount)?;
             }
             None => {
-                return Err(StdError::generic_err(format!(
-                    "not found in asset list: {}",
-                    asset_to_deduct.info
-                )));
+                return Err(StdError::generic_err(
+                    format!("not found in asset list: {}", asset_to_deduct.info)
+                ));
             }
         }
         Ok(self.purge())
@@ -463,7 +463,10 @@ mod test_helpers {
     }
 
     pub fn mock_list() -> AssetList {
-        AssetList::from(vec![Asset::native("uusd", 69420u128), Asset::new(mock_token(), 88888u128)])
+        AssetList::from(vec![
+            Asset::native("uusd", 69420u128),
+            Asset::new(mock_token(), 88888u128),
+        ])
     }
 }
 
@@ -493,17 +496,13 @@ mod tests {
         let s = "native:uusd:69420,cw721:galactic_punk:1";
         assert_eq!(
             AssetListUnchecked::from_str(s),
-            Err(StdError::generic_err(
-                "invalid asset type `cw721`; must be `native` or `cw20` or `cw1155`"
-            )),
+            Err(StdError::generic_err("invalid asset type `cw721`; must be `native` or `cw20` or `cw1155`")),
         );
 
         let s = "native:uusd:69420,cw20:mock_token:ngmi";
         assert_eq!(
             AssetListUnchecked::from_str(s),
-            Err(StdError::generic_err(
-                "invalid asset amount `ngmi`; must be a 128-bit unsigned integer"
-            )),
+            Err(StdError::generic_err("invalid asset amount `ngmi`; must be a 128-bit unsigned integer")),
         );
 
         let s = "native:uusd:69420,cw20:mock_token:88888";
@@ -553,13 +552,15 @@ mod tests {
     fn checking_uppercase() {
         let api = MockApi::default();
 
-        let checked = mock_list();
         let unchecked = AssetListBase(vec![
             AssetUnchecked::native("uusd", 69420u128),
             AssetUnchecked::cw20("MOCK_TOKEN", 88888u128),
         ]);
 
-        assert_eq!(unchecked.check(&api, None).unwrap(), checked);
+        assert_eq!(
+            unchecked.check(&api, None).unwrap_err(),
+            StdError::generic_err("Invalid input: address not normalized"),
+        );
     }
 
     #[test]

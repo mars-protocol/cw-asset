@@ -1,6 +1,6 @@
 [package]
 name = "cw-asset"
-description = "Helper library for interacting with Cosmos assets (SDK coins and CW20 tokens)"
+description = "Helper library for interacting with Cosmos assets (native coins, CW20, and CW1155 tokens)"
 version = "2.2.0"
 authors = ["larry <larry@delphidigital.io>"]
 edition = "2018"
