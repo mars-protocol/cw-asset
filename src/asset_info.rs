@@ -162,7 +162,7 @@ impl AssetInfoUnchecked {
                 AssetInfo::Cw20(api.addr_validate(contract_addr)?)
             },
             AssetInfoUnchecked::Cw1155(contract_addr, token_id) => {
-                if token_id.len() == 0 {
+                if token_id.is_empty() {
                     return Err(StdError::generic_err("token_id must not be empty"));
                 }
                 AssetInfo::Cw1155(api.addr_validate(contract_addr)?, token_id.clone())
