@@ -84,11 +84,13 @@ impl AssetListUnchecked {
 
 impl fmt::Display for AssetList {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(
-            f,
-            "{}",
+        let s = if self.is_empty() {
+            "[]".to_string()
+        } else {
             self.0.iter().map(|asset| asset.to_string()).collect::<Vec<String>>().join(",")
-        )
+        };
+
+        write!(f, "{}", s)
     }
 }
 
@@ -513,6 +515,9 @@ mod tests {
     fn to_string() {
         let list = mock_list();
         assert_eq!(list.to_string(), String::from("native:uusd:69420,cw20:mock_token:88888"));
+
+        let list = AssetList::from(vec![] as Vec<Asset>);
+        assert_eq!(list.to_string(), String::from("[]"));
     }
 
     #[test]
