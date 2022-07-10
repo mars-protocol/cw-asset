@@ -82,10 +82,9 @@ impl FromStr for AssetInfoUnchecked {
         match words[0] {
             "native" => {
                 if words.len() != 2 {
-                    return Err(StdError::generic_err(format!(
-                        "invalid asset info format `{}`; must be in format `native:{{denom}}`",
-                        s
-                    )));
+                    return Err(StdError::generic_err(
+                        format!("invalid asset info format `{}`; must be in format `native:{{denom}}`", s)
+                    ));
                 }
                 Ok(AssetInfoUnchecked::Native(String::from(words[1])))
             }
@@ -105,10 +104,9 @@ impl FromStr for AssetInfoUnchecked {
                 }
                 Ok(AssetInfoUnchecked::Cw1155(String::from(words[1]), String::from(words[2])))
             }
-            ty => Err(StdError::generic_err(format!(
-                "invalid asset type `{}`; must be `native` or `cw20` or `cw1155`",
-                ty
-            ))),
+            ty => Err(StdError::generic_err(
+                format!("invalid asset type `{}`; must be `native` or `cw20` or `cw1155`", ty)
+            )),
         }
     }
 }
