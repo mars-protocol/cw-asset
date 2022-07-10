@@ -160,6 +160,29 @@ impl From<Asset> for AssetUnchecked {
 }
 
 impl AssetUnchecked {
+    /// Parse a string of the format `{amount}{denom}` into an `AssetUnchecked` object. This is the
+    /// format that Cosmos SDK uses to stringify native coins. For example:
+    ///
+    /// - `12345uatom`
+    /// - `69420ibc/27394FB092D2ECCD56123C74F36E4C1F926001CEADA9CA97EA622B25F41E5EB2`
+    /// - `88888factory/osmo1z926ax906k0ycsuckele6x5hh66e2m4m6ry7dn`
+    ///
+    /// Since native coin denoms can only start with a non-numerial character, while its amount can
+    /// only contain numerical characters, we simply consider the first non-numerical character and
+    /// all that comes after as the denom, while all that comes before it as the amount. This is the
+    /// approach used in the [Steak Hub contract](https://github.com/st4k3h0us3/steak-contracts/blob/v1.0.0/contracts/hub/src/helpers.rs#L48-L68).
+    pub fn from_sdk_string(s: &str) -> StdResult<Self> {
+        for (i, c) in s.chars().enumerate() {
+            if c.is_alphabetic() {
+                let amount = Uint128::from_str(&s[..i])?;
+                let denom = &s[i..];
+                return Ok(Self::native(denom, amount));
+            }
+        }
+
+        Err(StdError::generic_err(format!("failed to parse sdk coin string `{}`", s)))
+    }
+
     /// Validate data contained in an _unchecked_ **asset** instnace, return a new _checked_
     /// **asset** instance:
     /// * For CW20 tokens, assert the contract address is valid
@@ -516,6 +539,21 @@ mod tests {
             AssetUnchecked::from_str(s).unwrap(),
             AssetUnchecked::cw1155("mock_contract", "mock_token", 12345u128),
         );
+    }
+
+    #[test]
+    fn from_sdk_string() {
+        let asset = AssetUnchecked::from_sdk_string("12345uatom").unwrap();
+        assert_eq!(asset, AssetUnchecked::native("uatom", 12345u128));
+
+        let asset = AssetUnchecked::from_sdk_string("69420ibc/27394FB092D2ECCD56123C74F36E4C1F926001CEADA9CA97EA622B25F41E5EB2").unwrap();
+        assert_eq!(asset, AssetUnchecked::native("ibc/27394FB092D2ECCD56123C74F36E4C1F926001CEADA9CA97EA622B25F41E5EB2", 69420u128));
+
+        let asset = AssetUnchecked::from_sdk_string("88888factory/osmo1z926ax906k0ycsuckele6x5hh66e2m4m6ry7dn").unwrap();
+        assert_eq!(asset, AssetUnchecked::native("factory/osmo1z926ax906k0ycsuckele6x5hh66e2m4m6ry7dn", 88888u128));
+
+        let err = AssetUnchecked::from_sdk_string("ngmi");
+        assert_eq!(err.is_err(), true);
     }
 
     #[test]
