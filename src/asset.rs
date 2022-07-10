@@ -48,6 +48,20 @@ impl<T> AssetBase<T> {
         }
     }
 
+    /// Create a new **asset** instance representing a native coin of given denom and amount
+    ///
+    /// ```rust
+    /// use cw_asset::Asset;
+    ///
+    /// let asset = Asset::native("uusd", 12345u128);
+    /// ```
+    pub fn native<A: Into<String>, B: Into<Uint128>>(denom: A, amount: B) -> Self {
+        Self {
+            info: AssetInfoBase::native(denom),
+            amount: amount.into(),
+        }
+    }
+
     /// Create a new **asset** instance representing a CW20 token of given contract address and amount
     ///
     /// To create an unchecked instance, provide the contract address in any of the following types:
@@ -89,20 +103,6 @@ impl<T> AssetBase<T> {
             amount: amount.into(),
         }
     }
-
-    /// Create a new **asset** instance representing a native coin of given denom and amount
-    ///
-    /// ```rust
-    /// use cw_asset::Asset;
-    ///
-    /// let asset = Asset::native("uusd", 12345u128);
-    /// ```
-    pub fn native<A: Into<String>, B: Into<Uint128>>(denom: A, amount: B) -> Self {
-        Self {
-            info: AssetInfoBase::native(denom),
-            amount: amount.into(),
-        }
-    }
 }
 
 // Represents an **asset** instance that may contain unverified data; to be used in messages
@@ -117,14 +117,14 @@ impl FromStr for AssetUnchecked {
         let words: Vec<&str> = s.split(':').collect();
 
         let info = match words[0] {
-            "cw20" | "native" => {
+            "native" | "cw20" => {
                 if words.len() != 3 {
                     return Err(StdError::generic_err(
                         format!("invalid asset format `{}`; must be in format `native:{{denom}}:{{amount}}` or `cw20:{{contract_addr}}:{{amount}}`", s)
                     ));
                 }
                 AssetInfoUnchecked::from_str(&format!("{}:{}", words[0], words[1]))?
-            }
+            },
             "cw1155" => {
                 if words.len() != 4 {
                     return Err(StdError::generic_err(
@@ -132,26 +132,21 @@ impl FromStr for AssetUnchecked {
                     ));
                 }
                 AssetInfoUnchecked::from_str(&format!("{}:{}:{}", words[0], words[1], words[2]))?
-            }
+            },
             ty => {
-                return Err(StdError::generic_err(format!(
-                    "invalid asset type `{}`; must be `native` or `cw20` or `cw1155`",
-                    ty
-                )));
-            }
+                return Err(StdError::generic_err(
+                    format!("invalid asset type `{}`; must be `native` or `cw20` or `cw1155`", ty)
+                ));
+            },
         };
 
-        let amount = Uint128::from_str(words[words.len() - 1]).map_err(|_| {
-            StdError::generic_err(format!(
-                "invalid asset amount `{}`; must be a 128-bit unsigned integer",
-                words[words.len() - 1]
-            ))
-        })?;
+        let amount = Uint128::from_str(words[words.len() - 1]).map_err(
+            |_| StdError::generic_err(
+                format!("invalid asset amount `{}`; must be a 128-bit unsigned integer", words[words.len() - 1])
+            )
+        )?;
 
-        Ok(AssetUnchecked {
-            info,
-            amount,
-        })
+        Ok(AssetUnchecked { info, amount })
     }
 }
 
@@ -219,14 +214,12 @@ impl TryFrom<Asset> for Coin {
                 denom: denom.clone(),
                 amount: asset.amount,
             }),
-            AssetInfo::Cw20(_) => Err(StdError::generic_err(format!(
-                "cannot cast asset {} into cosmwasm_std::Coin",
-                asset
-            ))),
-            AssetInfo::Cw1155(..) => Err(StdError::generic_err(format!(
-                "cannot cast asset {} into cosmwasm_std::Coin",
-                asset
-            ))),
+            AssetInfo::Cw20(_) => Err(StdError::generic_err(
+                format!("cannot cast asset {} into cosmwasm_std::Coin", asset)
+            )),
+            AssetInfo::Cw1155(..) => Err(StdError::generic_err(
+                format!("cannot cast asset {} into cosmwasm_std::Coin", asset)
+            )),
         }
     }
 }
@@ -292,10 +285,10 @@ impl Asset {
             })),
             AssetInfo::Cw1155(..) => {
                 Err(StdError::generic_err("cw1155 does not have `send` method. use `draw` instead"))
-            }
+            },
             AssetInfo::Native(_) => {
                 Err(StdError::generic_err("native coins do not have `send` method"))
-            }
+            },
         }
     }
 
@@ -315,6 +308,13 @@ impl Asset {
     /// ```
     pub fn transfer_msg<A: Into<String>>(&self, to: A) -> StdResult<CosmosMsg> {
         match &self.info {
+            AssetInfo::Native(denom) => Ok(CosmosMsg::Bank(BankMsg::Send {
+                to_address: to.into(),
+                amount: vec![Coin {
+                    denom: denom.clone(),
+                    amount: self.amount,
+                }],
+            })),
             AssetInfo::Cw20(contract_addr) => Ok(CosmosMsg::Wasm(WasmMsg::Execute {
                 contract_addr: contract_addr.into(),
                 msg: to_binary(&Cw20ExecuteMsg::Transfer {
@@ -323,16 +323,7 @@ impl Asset {
                 })?,
                 funds: vec![],
             })),
-            AssetInfo::Cw1155(..) => Err(StdError::generic_err(
-                "cw1155 does not have `transfer` method. use `draw` instead",
-            )),
-            AssetInfo::Native(denom) => Ok(CosmosMsg::Bank(BankMsg::Send {
-                to_address: to.into(),
-                amount: vec![Coin {
-                    denom: denom.clone(),
-                    amount: self.amount,
-                }],
-            })),
+            AssetInfo::Cw1155(..) => Err(StdError::generic_err("cw1155 does not have `transfer` method. use `draw` instead")),
         }
     }
 
@@ -380,9 +371,7 @@ impl Asset {
                 })?,
                 funds: vec![],
             })),
-            AssetInfo::Native(_) => {
-                Err(StdError::generic_err("native coins do not have `transfer_from` method"))
-            }
+            AssetInfo::Native(_) => Err(StdError::generic_err("native coins do not have `transfer_from` method")),
         }
     }
 }
@@ -446,15 +435,11 @@ mod tests {
         let astro = Asset::cw20(Addr::unchecked("astro_token"), 69u128);
         assert_eq!(
             Coin::try_from(&astro),
-            Err(StdError::generic_err(
-                "cannot cast asset cw20:astro_token:69 into cosmwasm_std::Coin"
-            ))
+            Err(StdError::generic_err("cannot cast asset cw20:astro_token:69 into cosmwasm_std::Coin")),
         );
         assert_eq!(
             Coin::try_from(astro),
-            Err(StdError::generic_err(
-                "cannot cast asset cw20:astro_token:69 into cosmwasm_std::Coin"
-            ))
+            Err(StdError::generic_err("cannot cast asset cw20:astro_token:69 into cosmwasm_std::Coin")),
         );
     }
 
@@ -496,9 +481,7 @@ mod tests {
         let s = "";
         assert_eq!(
             AssetUnchecked::from_str(s),
-            Err(StdError::generic_err(
-                "invalid asset type ``; must be `native` or `cw20` or `cw1155`"
-            )),
+            Err(StdError::generic_err("invalid asset type ``; must be `native` or `cw20` or `cw1155`")),
         );
 
         let s = "native:uusd:12345:67890";
@@ -510,17 +493,13 @@ mod tests {
         let s = "cw721:galactic_punk:1";
         assert_eq!(
             AssetUnchecked::from_str(s),
-            Err(StdError::generic_err(
-                "invalid asset type `cw721`; must be `native` or `cw20` or `cw1155`"
-            )),
+            Err(StdError::generic_err("invalid asset type `cw721`; must be `native` or `cw20` or `cw1155`")),
         );
 
         let s = "native:uusd:ngmi";
         assert_eq!(
             AssetUnchecked::from_str(s),
-            Err(StdError::generic_err(
-                "invalid asset amount `ngmi`; must be a 128-bit unsigned integer"
-            )),
+            Err(StdError::generic_err("invalid asset amount `ngmi`; must be a 128-bit unsigned integer")),
         );
 
         let s = "native:uusd:12345";
@@ -574,10 +553,11 @@ mod tests {
     fn checking_uppercase() {
         let api = MockApi::default();
 
-        let checked = Asset::cw20(Addr::unchecked("terra1234abcd"), 12345u128);
         let unchecked = AssetUnchecked::cw20("TERRA1234ABCD", 12345u128);
-
-        assert_eq!(unchecked.check(&api, None).unwrap(), checked);
+        assert_eq!(
+            unchecked.check(&api, None).unwrap_err(),
+            StdError::generic_err("Invalid input: address not normalized"),
+        );
     }
 
     #[test]
