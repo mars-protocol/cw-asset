@@ -50,11 +50,11 @@ impl<'a> Prefixer<'a> for AssetInfoKey {
 }
 
 impl KeyDeserialize for AssetInfoKey {
-    type Output = Self;
+    type Output = AssetInfoUnchecked;
 
     #[inline(always)]
     fn from_vec(value: Vec<u8>) -> StdResult<Self::Output> {
-        Ok(Self(value))
+        Self::Output::try_from(Self(value))
     }
 }
 
@@ -146,7 +146,7 @@ mod test {
         let items = map
             .prefix(key_1.into())
             .range(deps.as_ref().storage, None, None, Order::Ascending)
-            .map(|item| { item.unwrap() })
+            .map(|item| item.unwrap())
             .collect::<Vec<_>>();
 
         assert_eq!(items.len(), 2);
@@ -156,7 +156,7 @@ mod test {
         let items = map
             .prefix(key_2.into())
             .range(deps.as_ref().storage, None, None, Order::Ascending)
-            .map(|item| { item.unwrap() })
+            .map(|item| item.unwrap())
             .collect::<Vec<_>>();
 
         assert_eq!(items.len(), 2);

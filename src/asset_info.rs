@@ -114,9 +114,21 @@ impl FromStr for AssetInfoUnchecked {
 
 impl From<AssetInfo> for AssetInfoUnchecked {
     fn from(asset_info: AssetInfo) -> Self {
-        match &asset_info {
+        match asset_info {
             AssetInfo::Cw20(contract_addr) => AssetInfoUnchecked::Cw20(contract_addr.into()),
-            AssetInfo::Native(denom) => AssetInfoUnchecked::Native(denom.clone()),
+            AssetInfo::Native(denom) => AssetInfoUnchecked::Native(denom),
+            AssetInfo::Cw1155(contract_addr, token_id) => {
+                AssetInfoUnchecked::Cw1155(contract_addr.into(), token_id)
+            }
+        }
+    }
+}
+
+impl From<&AssetInfo> for AssetInfoUnchecked {
+    fn from(asset_info: &AssetInfo) -> Self {
+        match asset_info {
+            AssetInfo::Cw20(contract_addr) => AssetInfoUnchecked::Cw20(contract_addr.into()),
+            AssetInfo::Native(denom) => AssetInfoUnchecked::Native(denom.into()),
             AssetInfo::Cw1155(contract_addr, token_id) => {
                 AssetInfoUnchecked::Cw1155(contract_addr.into(), token_id.into())
             }
