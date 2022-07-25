@@ -19,6 +19,7 @@ use serde::{Deserialize, Serialize};
 /// - CW20 tokens. To create an **asset info** instance of this type, provide the contract address.
 /// - CW1155 tokens. To create an **asset info** instance of this type, provide the contract address and token ID.
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[non_exhaustive]
 #[serde(rename_all = "snake_case")]
 pub enum AssetInfoBase<T> {
     Native(String),
