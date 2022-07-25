@@ -17,7 +17,7 @@ macro_rules! impl_from {
                 Self(info.to_string().into_bytes())
             }
         }
-    };
+    }
 }
 
 impl_from!(AssetInfo);
@@ -50,11 +50,11 @@ impl<'a> Prefixer<'a> for AssetInfoKey {
 }
 
 impl KeyDeserialize for AssetInfoKey {
-    type Output = AssetInfoUnchecked;
+    type Output = Self;
 
     #[inline(always)]
     fn from_vec(value: Vec<u8>) -> StdResult<Self::Output> {
-        Self::Output::try_from(Self(value))
+        Ok(Self(value))
     }
 }
 
@@ -93,23 +93,15 @@ mod test {
         let (key_1, key_2) = &mock_keys();
         let map: Map<AssetInfoKey, u64> = Map::new("map");
 
-        map.save(deps.as_mut().storage, key_1.into(), &42069)
-            .unwrap();
-        map.save(deps.as_mut().storage, key_2.into(), &69420)
-            .unwrap();
+        map.save(deps.as_mut().storage, key_1.into(), &42069).unwrap();
+        map.save(deps.as_mut().storage, key_2.into(), &69420).unwrap();
 
-        assert_eq!(
-            map.load(deps.as_ref().storage, key_1.into()).unwrap(),
-            42069
-        );
-        assert_eq!(
-            map.load(deps.as_ref().storage, key_2.into()).unwrap(),
-            69420
-        );
+        assert_eq!(map.load(deps.as_ref().storage, key_1.into()).unwrap(), 42069);
+        assert_eq!(map.load(deps.as_ref().storage, key_2.into()).unwrap(), 69420);
 
         let items = map
             .range(deps.as_ref().storage, None, None, Order::Ascending)
-            .map(|item| item.unwrap())
+            .map(|item| { item.unwrap() })
             .collect::<Vec<_>>();
 
         assert_eq!(items.len(), 2);
@@ -154,7 +146,7 @@ mod test {
         let items = map
             .prefix(key_1.into())
             .range(deps.as_ref().storage, None, None, Order::Ascending)
-            .map(|item| item.unwrap())
+            .map(|item| { item.unwrap() })
             .collect::<Vec<_>>();
 
         assert_eq!(items.len(), 2);
@@ -164,7 +156,7 @@ mod test {
         let items = map
             .prefix(key_2.into())
             .range(deps.as_ref().storage, None, None, Order::Ascending)
-            .map(|item| item.unwrap())
+            .map(|item| { item.unwrap() })
             .collect::<Vec<_>>();
 
         assert_eq!(items.len(), 2);

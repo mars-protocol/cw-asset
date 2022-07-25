@@ -82,10 +82,9 @@ impl FromStr for AssetInfoUnchecked {
         match words[0] {
             "native" => {
                 if words.len() != 2 {
-                    return Err(StdError::generic_err(format!(
-                        "invalid asset info format `{}`; must be in format `native:{{denom}}`",
-                        s
-                    )));
+                    return Err(StdError::generic_err(
+                        format!("invalid asset info format `{}`; must be in format `native:{{denom}}`", s)
+                    ));
                 }
                 Ok(AssetInfoUnchecked::Native(String::from(words[1])))
             }
@@ -103,36 +102,20 @@ impl FromStr for AssetInfoUnchecked {
                         format!("invalid asset info format `{}`; must be in format `cw1155:{{contract_addr}}:{{token_id}}`", s)
                     ));
                 }
-                Ok(AssetInfoUnchecked::Cw1155(
-                    String::from(words[1]),
-                    String::from(words[2]),
-                ))
+                Ok(AssetInfoUnchecked::Cw1155(String::from(words[1]), String::from(words[2])))
             }
-            ty => Err(StdError::generic_err(format!(
-                "invalid asset type `{}`; must be `native` or `cw20` or `cw1155`",
-                ty
-            ))),
+            ty => Err(StdError::generic_err(
+                format!("invalid asset type `{}`; must be `native` or `cw20` or `cw1155`", ty)
+            )),
         }
     }
 }
 
 impl From<AssetInfo> for AssetInfoUnchecked {
     fn from(asset_info: AssetInfo) -> Self {
-        match asset_info {
+        match &asset_info {
             AssetInfo::Cw20(contract_addr) => AssetInfoUnchecked::Cw20(contract_addr.into()),
-            AssetInfo::Native(denom) => AssetInfoUnchecked::Native(denom),
-            AssetInfo::Cw1155(contract_addr, token_id) => {
-                AssetInfoUnchecked::Cw1155(contract_addr.into(), token_id)
-            }
-        }
-    }
-}
-
-impl From<&AssetInfo> for AssetInfoUnchecked {
-    fn from(asset_info: &AssetInfo) -> Self {
-        match asset_info {
-            AssetInfo::Cw20(contract_addr) => AssetInfoUnchecked::Cw20(contract_addr.into()),
-            AssetInfo::Native(denom) => AssetInfoUnchecked::Native(denom.into()),
+            AssetInfo::Native(denom) => AssetInfoUnchecked::Native(denom.clone()),
             AssetInfo::Cw1155(contract_addr, token_id) => {
                 AssetInfoUnchecked::Cw1155(contract_addr.into(), token_id.into())
             }
@@ -168,24 +151,22 @@ impl AssetInfoUnchecked {
             AssetInfoUnchecked::Native(denom) => {
                 if let Some(whitelist) = optional_whitelist {
                     if !whitelist.contains(&&denom[..]) {
-                        return Err(StdError::generic_err(format!(
-                            "invalid denom {}; must be {}",
-                            denom,
-                            whitelist.join("|")
-                        )));
+                        return Err(StdError::generic_err(
+                            format!("invalid denom {}; must be {}", denom, whitelist.join("|"))
+                        ));
                     }
                 }
                 AssetInfo::Native(denom.clone())
-            }
+            },
             AssetInfoUnchecked::Cw20(contract_addr) => {
                 AssetInfo::Cw20(api.addr_validate(contract_addr)?)
-            }
+            },
             AssetInfoUnchecked::Cw1155(contract_addr, token_id) => {
                 if token_id.is_empty() {
                     return Err(StdError::generic_err("token_id must not be empty"));
                 }
                 AssetInfo::Cw1155(api.addr_validate(contract_addr)?, token_id.clone())
-            }
+            },
         })
     }
 }
@@ -195,9 +176,7 @@ impl fmt::Display for AssetInfo {
         match self {
             AssetInfo::Cw20(contract_addr) => write!(f, "cw20:{}", contract_addr),
             AssetInfo::Native(denom) => write!(f, "native:{}", denom),
-            AssetInfo::Cw1155(contract_addr, token_id) => {
-                write!(f, "cw1155:{}:{}", contract_addr, token_id)
-            }
+            AssetInfo::Cw1155(contract_addr, token_id) => write!(f, "cw1155:{}:{}", contract_addr, token_id),
         }
     }
 }
@@ -227,7 +206,7 @@ impl AssetInfo {
                         denom: denom.clone(),
                     }))?;
                 Ok(response.amount.amount)
-            }
+            },
             AssetInfo::Cw20(contract_addr) => {
                 let response: Cw20BalanceResponse =
                     querier.query(&QueryRequest::Wasm(WasmQuery::Smart {
@@ -237,7 +216,7 @@ impl AssetInfo {
                         })?,
                     }))?;
                 Ok(response.balance)
-            }
+            },
             AssetInfo::Cw1155(contract_addr, token_id) => {
                 let response: Cw1155BalanceResponse =
                     querier.query(&QueryRequest::Wasm(WasmQuery::Smart {
@@ -248,7 +227,7 @@ impl AssetInfo {
                         })?,
                     }))?;
                 Ok(response.balance)
-            }
+            },
         }
     }
 }
@@ -302,32 +281,23 @@ mod test {
         let s = "";
         assert_eq!(
             AssetInfoUnchecked::from_str(s),
-            Err(StdError::generic_err(
-                "invalid asset type ``; must be `native` or `cw20` or `cw1155`"
-            )),
+            Err(StdError::generic_err("invalid asset type ``; must be `native` or `cw20` or `cw1155`")),
         );
 
         let s = "native:uusd:12345";
         assert_eq!(
             AssetInfoUnchecked::from_str(s),
-            Err(StdError::generic_err(
-                "invalid asset info format `native:uusd:12345`; must be in format `native:{denom}`"
-            )),
+            Err(StdError::generic_err("invalid asset info format `native:uusd:12345`; must be in format `native:{denom}`")),
         );
 
         let s = "cw721:galactic_punk";
         assert_eq!(
             AssetInfoUnchecked::from_str(s),
-            Err(StdError::generic_err(
-                "invalid asset type `cw721`; must be `native` or `cw20` or `cw1155`"
-            )),
+            Err(StdError::generic_err("invalid asset type `cw721`; must be `native` or `cw20` or `cw1155`")),
         );
 
         let s = "native:uusd";
-        assert_eq!(
-            AssetInfoUnchecked::from_str(s).unwrap(),
-            AssetInfoUnchecked::native("uusd"),
-        );
+        assert_eq!(AssetInfoUnchecked::from_str(s).unwrap(), AssetInfoUnchecked::native("uusd"),);
 
         let s = "cw20:mock_token";
         assert_eq!(
@@ -351,10 +321,7 @@ mod test {
         assert_eq!(info.to_string(), String::from("cw20:mock_token"));
 
         let info = AssetInfo::cw1155(Addr::unchecked("mock_contract"), "mock_token");
-        assert_eq!(
-            info.to_string(),
-            String::from("cw1155:mock_contract:mock_token")
-        );
+        assert_eq!(info.to_string(), String::from("cw1155:mock_contract:mock_token"));
     }
 
     #[test]
@@ -367,19 +334,12 @@ mod test {
 
         let checked = AssetInfo::native("uusd");
         let unchecked: AssetInfoUnchecked = checked.clone().into();
-        assert_eq!(
-            unchecked
-                .check(&api, Some(&["uusd", "uluna", "uosmo"]))
-                .unwrap(),
-            checked
-        );
+        assert_eq!(unchecked.check(&api, Some(&["uusd", "uluna", "uosmo"])).unwrap(), checked);
 
         let unchecked = AssetInfoUnchecked::native("uatom");
         assert_eq!(
             unchecked.check(&api, Some(&["uusd", "uluna", "uosmo"])),
-            Err(StdError::generic_err(
-                "invalid denom uatom; must be uusd|uluna|uosmo"
-            )),
+            Err(StdError::generic_err("invalid denom uatom; must be uusd|uluna|uosmo")),
         );
     }
 
@@ -403,14 +363,11 @@ mod test {
     #[test]
     fn querying_balance() {
         let mut deps = mock_dependencies();
-        deps.querier
-            .set_base_balances("alice", &[Coin::new(12345, "uusd")]);
+        deps.querier.set_base_balances("alice", &[Coin::new(12345, "uusd")]);
         deps.querier.set_cw20_balance("mock_token", "bob", 67890);
 
         let info1 = AssetInfo::native("uusd");
-        let balance1 = info1
-            .query_balance(&deps.as_ref().querier, "alice")
-            .unwrap();
+        let balance1 = info1.query_balance(&deps.as_ref().querier, "alice").unwrap();
         assert_eq!(balance1, Uint128::new(12345));
 
         let info2 = AssetInfo::cw20(Addr::unchecked("mock_token"));
