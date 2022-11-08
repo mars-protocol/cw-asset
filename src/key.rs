@@ -7,7 +7,7 @@ use cw_storage_plus::{Key, KeyDeserialize, Prefixer, PrimaryKey};
 use crate::{AssetInfo, AssetInfoUnchecked};
 
 /// TODO: add docs
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct AssetInfoKey(pub Vec<u8>);
 
 macro_rules! impl_from {
