@@ -2,22 +2,20 @@ use std::convert::TryFrom;
 use std::fmt;
 use std::str::FromStr;
 
+use cosmwasm_schema::cw_serde;
 use cosmwasm_std::{
     to_binary, Addr, Api, BankMsg, Binary, Coin, CosmosMsg, StdError, StdResult, Uint128, WasmMsg,
 };
 use cw1155::Cw1155ExecuteMsg;
 use cw20::Cw20ExecuteMsg;
 
-use schemars::JsonSchema;
-use serde::{Deserialize, Serialize};
-
-use super::asset_info::{AssetInfo, AssetInfoBase, AssetInfoUnchecked};
+use crate::{AssetInfo, AssetInfoBase, AssetInfoUnchecked};
 
 /// Represents a fungible asset with a known amount
 ///
 /// Each asset instance contains two values: [`info`], which specifies the asset's type (CW20 or
 /// native), and its [`amount`], which specifies the asset's amount
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[cw_serde]
 pub struct AssetBase<T> {
     /// Specifies the asset's type (CW20 or native)
     pub info: AssetInfoBase<T>,
@@ -408,6 +406,7 @@ mod tests {
     use super::*;
     use crate::AssetInfoUnchecked;
     use cosmwasm_std::testing::MockApi;
+    use serde::Serialize;
 
     #[derive(Serialize)]
     enum MockExecuteMsg {

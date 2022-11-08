@@ -50,16 +50,14 @@
 //! ## Use in messages
 //!
 //! [`Asset`] and [`AssetList`] each comes with an _unchecked_ counterpart which contains unverified
-//! addresses and/or denoms, and implements traits that allow them to be serialized into JSON, so 
+//! addresses and/or denoms, and implements traits that allow them to be serialized into JSON, so
 //! that they can be directly used in Cosmos messages:
 //!
 //! ```rust
-//! use serde::{Serialize, Deserialize};
-//! use schemars::JsonSchema;
-//!
+//! use cosmwasm_schema::cw_serde;
 //! use cw_asset::AssetUnchecked;
 //!
-//! #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+//! #[cw_serde]
 //! pub enum ExecuteMsg {
 //!     Deposit {
 //!         asset: AssetUnchecked,
@@ -82,6 +80,7 @@
 //!     Ok(())
 //! }
 //! ```
+
 mod asset;
 mod asset_info;
 mod asset_list;

@@ -1,15 +1,13 @@
 use std::fmt;
 use std::str::FromStr;
 
+use cosmwasm_schema::cw_serde;
 use cosmwasm_std::{
     to_binary, Addr, Api, BalanceResponse, BankQuery, QuerierWrapper, QueryRequest, StdError,
     StdResult, Uint128, WasmQuery,
 };
 use cw1155::{BalanceResponse as Cw1155BalanceResponse, Cw1155QueryMsg};
 use cw20::{BalanceResponse as Cw20BalanceResponse, Cw20QueryMsg};
-
-use schemars::JsonSchema;
-use serde::{Deserialize, Serialize};
 
 /// Represents the type of an fungible asset
 ///
@@ -18,9 +16,8 @@ use serde::{Deserialize, Serialize};
 /// - Native SDK coins. To create an **asset info** instance of this type, provide the denomination.
 /// - CW20 tokens. To create an **asset info** instance of this type, provide the contract address.
 /// - CW1155 tokens. To create an **asset info** instance of this type, provide the contract address and token ID.
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[cw_serde]
 #[non_exhaustive]
-#[serde(rename_all = "snake_case")]
 pub enum AssetInfoBase<T> {
     Native(String),
     Cw20(T),

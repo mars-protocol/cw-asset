@@ -1,16 +1,13 @@
 use std::fmt;
 use std::str::FromStr;
 
+use cosmwasm_schema::cw_serde;
 use cosmwasm_std::{Addr, Api, Coin, CosmosMsg, StdError, StdResult};
 
-use schemars::JsonSchema;
-use serde::{Deserialize, Serialize};
-
-use super::asset::{Asset, AssetBase, AssetUnchecked};
-use super::asset_info::AssetInfo;
+use crate::{Asset, AssetBase, AssetInfo, AssetUnchecked};
 
 /// Represents a list of fungible tokens, each with a known amount
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[cw_serde]
 pub struct AssetListBase<T>(Vec<AssetBase<T>>);
 
 #[allow(clippy::derivable_impls)] // clippy says `Default` can be derived here, but actually it can't
