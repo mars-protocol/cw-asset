@@ -1,7 +1,7 @@
 use std::convert::TryFrom;
 use std::str::FromStr;
 
-use cosmwasm_std::{StdError, StdResult};
+use cosmwasm_std::{StdError, StdResult, Addr};
 use cw_storage_plus::{Key, KeyDeserialize, Prefixer, PrimaryKey};
 
 use crate::{AssetInfo, AssetInfoUnchecked};
@@ -43,6 +43,43 @@ impl<'a> PrimaryKey<'a> for AssetInfoKey {
     }
 }
 
+impl KeyDeserialize for AssetInfo {
+    type Output = Self;
+
+    #[inline(always)]
+    fn from_vec(value: Vec<u8>) -> StdResult<Self::Output> {
+        AssetInfo::from_str(&String::from_utf8(value)?)
+    }
+}
+
+impl<'a> PrimaryKey<'a> for AssetInfo {
+    type Prefix = ();
+    type SubPrefix = ();
+    type Suffix = Self;
+    type SuperSuffix = Self;
+
+    fn key(&self) -> Vec<Key> {
+        let mut keys = vec![];
+        match &self {
+            AssetInfo::Cw20(addr) => {
+                keys.extend("cw20:".key());
+                keys.extend(addr.key());
+            },
+            AssetInfo::Native(denom) => {
+                keys.extend("native:".key());
+                keys.extend(denom.key());
+            }
+            AssetInfo::Cw1155(addr,id ) => {
+                keys.extend("cw1155:".key());
+                keys.extend(addr.key());
+                keys.extend(":".key());
+                keys.extend(id.key());
+            }
+        };
+        keys
+    }
+}
+
 impl<'a> Prefixer<'a> for AssetInfoKey {
     fn prefix(&self) -> Vec<Key> {
         vec![Key::Ref(&self.0)]
@@ -55,6 +92,44 @@ impl KeyDeserialize for AssetInfoKey {
     #[inline(always)]
     fn from_vec(value: Vec<u8>) -> StdResult<Self::Output> {
         Self::Output::try_from(Self(value))
+    }
+}
+
+
+impl AssetInfo {
+    /// Implemented as private function to prevent from_str from being called on AssetInfo
+    fn from_str(s: &str) -> Result<Self, StdError> {
+        let words: Vec<&str> = s.split(':').collect();
+
+        match words[0] {
+            "native" => {
+                if words.len() != 2 {
+                    return Err(StdError::generic_err(
+                        format!("invalid asset info format `{}`; must be in format `native:{{denom}}`", s)
+                    ));
+                }
+                Ok(AssetInfo::Native(String::from(words[1])))
+            }
+            "cw20" => {
+                if words.len() != 2 {
+                    return Err(StdError::generic_err(
+                        format!("invalid asset info format `{}`; must be in format `cw20:{{contract_addr}}`", s)
+                    ));
+                }
+                Ok(AssetInfo::Cw20(Addr::unchecked(words[1])))
+            }
+            "cw1155" => {
+                if words.len() != 3 {
+                    return Err(StdError::generic_err(
+                        format!("invalid asset info format `{}`; must be in format `cw1155:{{contract_addr}}:{{token_id}}`", s)
+                    ));
+                }
+                Ok(AssetInfo::Cw1155(Addr::unchecked(words[1]), String::from(words[2])))
+            }
+            ty => Err(StdError::generic_err(
+                format!("invalid asset type `{}`; must be `native` or `cw20` or `cw1155`", ty)
+            )),
+        }
     }
 }
 
