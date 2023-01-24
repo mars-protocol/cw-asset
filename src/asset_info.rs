@@ -8,6 +8,7 @@ use cosmwasm_std::{
 };
 use cw1155::{BalanceResponse as Cw1155BalanceResponse, Cw1155QueryMsg};
 use cw20::{BalanceResponse as Cw20BalanceResponse, Cw20QueryMsg};
+use cw_storage_plus::{PrimaryKey, Key, KeyDeserialize};
 
 /// Represents the type of an fungible asset
 ///
@@ -239,6 +240,79 @@ impl AssetInfo {
                 Ok(response.balance)
             },
         }
+    }
+
+    /// Implemented as private function to prevent from_str from being called on AssetInfo
+    fn from_str(s: &str) -> Result<Self, StdError> {
+        let words: Vec<&str> = s.split(':').collect();
+
+        match words[0] {
+            "native" => {
+                if words.len() != 2 {
+                    return Err(StdError::generic_err(
+                        format!("invalid asset info format `{}`; must be in format `native:{{denom}}`", s)
+                    ));
+                }
+                Ok(AssetInfo::Native(String::from(words[1])))
+            }
+            "cw20" => {
+                if words.len() != 2 {
+                    return Err(StdError::generic_err(
+                        format!("invalid asset info format `{}`; must be in format `cw20:{{contract_addr}}`", s)
+                    ));
+                }
+                Ok(AssetInfo::Cw20(Addr::unchecked(words[1])))
+            }
+            "cw1155" => {
+                if words.len() != 3 {
+                    return Err(StdError::generic_err(
+                        format!("invalid asset info format `{}`; must be in format `cw1155:{{contract_addr}}:{{token_id}}`", s)
+                    ));
+                }
+                Ok(AssetInfo::Cw1155(Addr::unchecked(words[1]), String::from(words[2])))
+            }
+            ty => Err(StdError::generic_err(
+                format!("invalid asset type `{}`; must be `native` or `cw20` or `cw1155`", ty)
+            )),
+        }
+    }
+}
+
+
+impl<'a> PrimaryKey<'a> for AssetInfo {
+    type Prefix = ();
+    type SubPrefix = ();
+    type Suffix = Self;
+    type SuperSuffix = Self;
+
+    fn key(&self) -> Vec<Key> {
+        let mut keys = vec![];
+        match &self {
+            AssetInfo::Cw20(addr) => {
+                keys.extend("cw20:".key());
+                keys.extend(addr.key());
+            },
+            AssetInfo::Native(denom) => {
+                keys.extend("native:".key());
+                keys.extend(denom.key());
+            }
+            AssetInfo::Cw1155(addr,id ) => {
+                keys.extend("cw1155:".key());
+                keys.extend(addr.key());
+                keys.extend(":".key());
+                keys.extend(id.key());
+            }
+        };
+        keys
+    }
+}
+
+impl KeyDeserialize for AssetInfo {
+    type Output = Self;
+
+    #[inline(always)]
+    fn from_vec(value: Vec<u8>) -> StdResult<Self::Output> {
+        AssetInfo::from_str(&String::from_utf8(value)?)
     }
 }
 
