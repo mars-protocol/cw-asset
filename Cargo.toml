@@ -11,7 +11,6 @@ repository  = "https://github.com/mars-protocol/cw-asset"
 cosmwasm-schema = "1.1"
 cosmwasm-std    = "1.1"
 cw20            = "0.16"
-cw1155          = "0.16"
 cw-storage-plus = "0.16"
 
 [dev-dependencies]
