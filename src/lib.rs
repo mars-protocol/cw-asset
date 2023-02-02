@@ -84,9 +84,9 @@ mod asset_info;
 mod asset_list;
 mod error;
 
-pub use asset::*;
-pub use asset_info::*;
-pub use asset_list::*;
+pub use asset::{Asset, AssetBase, AssetUnchecked};
+pub use asset_info::{AssetInfo, AssetInfoBase, AssetInfoUnchecked};
+pub use asset_list::{AssetList, AssetListBase, AssetListUnchecked};
 pub use error::AssetError;
 
 #[cfg(test)]
