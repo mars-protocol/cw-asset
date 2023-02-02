@@ -11,13 +11,14 @@ use cw_storage_plus::{Key, KeyDeserialize, Prefixer, PrimaryKey};
 
 use crate::AssetError;
 
-/// Represents the type of an fungible asset
+/// Represents the type of an fungible asset.
 ///
 /// Each **asset info** instance can be one of three variants:
 ///
-/// - Native SDK coins. To create an **asset info** instance of this type, provide the denomination.
-/// - CW20 tokens. To create an **asset info** instance of this type, provide the contract address.
-/// - CW1155 tokens. To create an **asset info** instance of this type, provide the contract address and token ID.
+/// - Native SDK coins. To create an **asset info** instance of this type,
+///   provide the denomination.
+/// - CW20 tokens. To create an **asset info** instance of this type, provide
+///   the contract address.
 #[cw_serde]
 #[non_exhaustive]
 pub enum AssetInfoBase<T: AddressLike> {
@@ -26,7 +27,8 @@ pub enum AssetInfoBase<T: AddressLike> {
 }
 
 impl<T: AddressLike> AssetInfoBase<T> {
-    /// Create an **asset info** instance of the _native_ variant by providing the coin's denomination
+    /// Create an **asset info** instance of the _native_ variant by providing
+    /// the coin's denomination.
     ///
     /// ```rust
     /// use cw_asset::AssetInfo;
@@ -39,10 +41,6 @@ impl<T: AddressLike> AssetInfoBase<T> {
 
     /// Create an **asset info** instance of the _CW20_ variant
     ///
-    /// To create an unchecked instance, provide the contract address in any of the following types:
-    /// [`cosmwasm_std::Addr`], [`String`], or [`&str`]; to create a checked instance, the address
-    /// must of type [`cosmwasm_std::Addr`].
-    ///
     /// ```rust
     /// use cosmwasm_std::Addr;
     /// use cw_asset::AssetInfo;
@@ -54,10 +52,12 @@ impl<T: AddressLike> AssetInfoBase<T> {
     }
 }
 
-/// Represents an **asset info** instance that may contain unverified data; to be used in messages
+/// Represents an **asset info** instance that may contain unverified data; to
+/// be used in messages.
 pub type AssetInfoUnchecked = AssetInfoBase<String>;
 
-/// Represents an **asset info** instance containing only verified data; to be saved in contract storage
+/// Represents an **asset info** instance containing only verified data; to be
+/// saved in contract storage.
 pub type AssetInfo = AssetInfoBase<Addr>;
 
 impl FromStr for AssetInfoUnchecked {
@@ -111,11 +111,12 @@ impl From<&AssetInfo> for AssetInfoUnchecked {
 }
 
 impl AssetInfoUnchecked {
-    /// Validate data contained in an _unchecked_ **asset info** instance; return a new _checked_
-    /// **asset info** instance:
-    /// * For CW20 tokens, assert the contract address is valid
-    /// * For SDK coins, assert that the denom is included in a given whitelist; skip if the
-    ///   whitelist is not provided
+    /// Validate data contained in an _unchecked_ **asset info** instance;
+    /// return a new _checked_ **asset info** instance:
+    ///
+    /// - For CW20 tokens, assert the contract address is valid;
+    /// - For SDK coins, assert that the denom is included in a given whitelist;
+    ///   skip if the whitelist is not provided.
     ///
     ///
     /// ```rust
@@ -259,7 +260,8 @@ impl KeyDeserialize for AssetInfo {
     #[inline(always)]
     fn from_vec(mut value: Vec<u8>) -> StdResult<Self::Output> {
         // ignore length prefix
-        // we're allowed to do this because we set the key's namespace ourselves in PrimaryKey (first key)
+        // we're allowed to do this because we set the key's namespace ourselves
+        // in PrimaryKey (first key)
         value.drain(0..2);
 
         // parse the bytes into an utf8 string
@@ -277,9 +279,9 @@ impl<'a> Prefixer<'a> for AssetInfo {
     }
 }
 
-//--------------------------------------------------------------------------------------------------
+//------------------------------------------------------------------------------
 // Tests
-//--------------------------------------------------------------------------------------------------
+//------------------------------------------------------------------------------
 
 #[cfg(test)]
 mod test {

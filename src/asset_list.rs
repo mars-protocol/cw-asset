@@ -17,10 +17,12 @@ impl<T: AddressLike> Default for AssetListBase<T> {
     }
 }
 
-/// Represents an **asset list** instance that may contain unverified data; to be used in messages
+/// Represents an **asset list** instance that may contain unverified data; to
+/// be used in messages.
 pub type AssetListUnchecked = AssetListBase<String>;
 
-/// Represents an **asset list** instance containing only verified data; to be used in contract storage
+/// Represents an **asset list** instance containing only verified data; to be
+/// used in contract storage.
 pub type AssetList = AssetListBase<Addr>;
 
 impl FromStr for AssetListUnchecked {
@@ -46,10 +48,11 @@ impl From<AssetList> for AssetListUnchecked {
 }
 
 impl AssetListUnchecked {
-    /// Validate data contained in an _unchecked_ **asset list** instance, return a new _checked_
-    /// **asset list** instance:
-    /// * For CW20 tokens, assert the contract address is valid
-    /// * For SDK coins, assert that the denom is included in a given whitelist; skip if the
+    /// Validate data contained in an _unchecked_ **asset list** instance,
+    /// return a new _checked_ **asset list** instance:
+    ///
+    /// - For CW20 tokens, assert the contract address is valid
+    /// - For SDK coins, assert that the denom is included in a given whitelist; skip if the
     ///   whitelist is not provided
     ///
     /// ```rust
@@ -192,8 +195,8 @@ impl AssetList {
     /// let len = list.len(); // should be two
     /// ```
     ///
-    // NOTE: I do have `is_empty` implemented, but clippy still throws a warning saying I don't have
-    // it. Must be a clippy bug...
+    // NOTE: I do have `is_empty` implemented, but clippy still throws a warnin
+    // saying I don't have it. Must be a clippy bug...
     #[allow(clippy::len_without_is_empty)]
     pub fn len(&self) -> usize {
         self.0.len()
@@ -216,11 +219,11 @@ impl AssetList {
 
     /// Find an asset in the list that matches the provided asset info
     ///
-    /// Return `Some(&asset)` if found, where `&asset` is a reference to the asset found; `None` if
-    /// not found.
+    /// Return `Some(&asset)` if found, where `&asset` is a reference to the
+    /// asset found; `None` if not found.
     ///
-    /// A case where is method is useful is to find how much asset the user sent along with a
-    /// message:
+    /// A case where is method is useful is to find how much asset the user sent
+    /// along with a message:
     ///
     /// ```rust
     /// use cosmwasm_std::MessageInfo;
@@ -240,14 +243,16 @@ impl AssetList {
 
     /// Apply a mutation on each of the asset
     ///
-    /// An example case where this is useful is to scale the amount of each asset in the list by a
-    /// certain factor:
+    /// An example case where this is useful is to scale the amount of each
+    /// asset in the list by a certain factor:
     ///
     /// ```rust
     /// use cw_asset::{Asset, AssetInfo, AssetList};
     ///
-    /// let mut list =
-    ///     AssetList::from(vec![Asset::native("uluna", 12345u128), Asset::native("uusd", 67890u128)]);
+    /// let mut list = AssetList::from(vec![
+    ///     Asset::native("uluna", 12345u128),
+    ///     Asset::native("uusd", 67890u128),
+    /// ]);
     ///
     /// let list_halved = list.apply(|a| a.amount = a.amount.multiply_ratio(1u128, 2u128));
     /// ```
@@ -277,11 +282,11 @@ impl AssetList {
 
     /// Add a new asset to the list
     ///
-    /// If asset of the same kind already exists in the list, then increment its amount; if not,
-    /// append to the end of the list.
+    /// If asset of the same kind already exists in the list, then increment its
+    /// amount; if not, append to the end of the list.
     ///
-    /// NOTE: `purge` is automatically performed following the addition, so adding an asset with
-    /// zero amount has no effect.
+    /// NOTE: `purge` is automatically performed following the addition, so
+    /// adding an asset with zero amount has no effect.
     ///
     /// ```rust
     /// use cw_asset::{Asset, AssetInfo, AssetList};
@@ -346,11 +351,13 @@ impl AssetList {
 
     /// Deduct an asset from the list
     ///
-    /// The asset of the same kind and equal or greater amount must already exist in the list. If so,
-    /// deduct the amount from the asset; ifnot, throw an error.
+    /// The asset of the same kind and equal or greater amount must already
+    /// exist in the list. If so, deduct the amount from the asset; ifnot, throw
+    /// an error.
     ///
-    /// NOTE: `purge` is automatically performed following the addition. Therefore, if an asset's
-    /// amount is reduced to zero, it will be removed from the list.
+    /// NOTE: `purge` is automatically performed following the addition.
+    /// Therefore, if an asset's amount is reduced to zero, it will be removed
+    /// from the list.
     ///
     /// ```
     /// use cw_asset::{Asset, AssetInfo, AssetList};
@@ -434,9 +441,9 @@ impl AssetList {
     }
 }
 
-//--------------------------------------------------------------------------------------------------
+//------------------------------------------------------------------------------
 // Tests
-//--------------------------------------------------------------------------------------------------
+//------------------------------------------------------------------------------
 
 #[cfg(test)]
 mod test_helpers {

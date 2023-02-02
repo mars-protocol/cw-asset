@@ -11,8 +11,8 @@ use crate::{AssetInfo, AssetInfoBase, AssetInfoUnchecked, AssetError};
 
 /// Represents a fungible asset with a known amount
 ///
-/// Each asset instance contains two values: [`info`], which specifies the asset's type (CW20 or
-/// native), and its [`amount`], which specifies the asset's amount
+/// Each asset instance contains two values: `info`, which specifies the asset's
+/// type (CW20 or native), and its `amount`, which specifies the asset's amount.
 #[cw_serde]
 pub struct AssetBase<T: AddressLike> {
     /// Specifies the asset's type (CW20 or native)
@@ -24,8 +24,9 @@ pub struct AssetBase<T: AddressLike> {
 impl<T: AddressLike> AssetBase<T> {
     /// Create a new **asset** instance based on given asset info and amount
     ///
-    /// To create an unchecked instance, the [`info`] parameter may be either checked or unchecked;
-    /// to create a checked instance, the [`info`] paramter must also be checked.
+    /// To create an unchecked instance, the `info` parameter may be either
+    /// checked or unchecked; to create a checked instance, the `info` paramter
+    /// must also be checked.
     ///
     /// ```rust
     /// use cosmwasm_std::Addr;
@@ -58,11 +59,8 @@ impl<T: AddressLike> AssetBase<T> {
         }
     }
 
-    /// Create a new **asset** instance representing a CW20 token of given contract address and amount
-    ///
-    /// To create an unchecked instance, provide the contract address in any of the following types:
-    /// [`cosmwasm_std::Addr`], [`String`], or [`&str`]; to create a checked instance, the address
-    /// must of type [`cosmwasm_std::Addr`].
+    /// Create a new **asset** instance representing a CW20 token of given
+    /// contract address and amount.
     ///
     /// ```rust
     /// use cosmwasm_std::Addr;
@@ -78,10 +76,12 @@ impl<T: AddressLike> AssetBase<T> {
     }
 }
 
-// Represents an **asset** instance that may contain unverified data; to be used in messages
+// Represents an **asset** instance that may contain unverified data; to be used
+// in messages.
 pub type AssetUnchecked = AssetBase<String>;
 
-// Represents an **asset** instance containing only verified data; to be saved in contract storage
+// Represents an **asset** instance containing only verified data; to be saved
+// in contract storage.
 pub type Asset = AssetBase<Addr>;
 
 impl FromStr for AssetUnchecked {
@@ -130,16 +130,18 @@ impl From<Asset> for AssetUnchecked {
 }
 
 impl AssetUnchecked {
-    /// Parse a string of the format `{amount}{denom}` into an `AssetUnchecked` object. This is the
-    /// format that Cosmos SDK uses to stringify native coins. For example:
+    /// Parse a string of the format `{amount}{denom}` into an `AssetUnchecked`
+    /// object. This is the format that Cosmos SDK uses to stringify native
+    /// coins. For example:
     ///
     /// - `12345uatom`
     /// - `69420ibc/27394FB092D2ECCD56123C74F36E4C1F926001CEADA9CA97EA622B25F41E5EB2`
     /// - `88888factory/osmo1z926ax906k0ycsuckele6x5hh66e2m4m6ry7dn`
     ///
-    /// Since native coin denoms can only start with a non-numerial character, while its amount can
-    /// only contain numerical characters, we simply consider the first non-numerical character and
-    /// all that comes after as the denom, while all that comes before it as the amount. This is the
+    /// Since native coin denoms can only start with a non-numerial character,
+    /// while its amount can only contain numerical characters, we simply
+    /// consider the first non-numerical character and all that comes after as
+    /// the denom, while all that comes before it as the amount. This is the
     /// approach used in the [Steak Hub contract](https://github.com/st4k3h0us3/steak-contracts/blob/v1.0.0/contracts/hub/src/helpers.rs#L48-L68).
     pub fn from_sdk_string(s: &str) -> Result<Self, AssetError> {
         for (i, c) in s.chars().enumerate() {
@@ -155,11 +157,12 @@ impl AssetUnchecked {
         })
     }
 
-    /// Validate data contained in an _unchecked_ **asset** instnace, return a new _checked_
-    /// **asset** instance:
-    /// * For CW20 tokens, assert the contract address is valid
-    /// * For SDK coins, assert that the denom is included in a given whitelist; skip if the
-    ///   whitelist is not provided
+    /// Validate data contained in an _unchecked_ **asset** instnace, return a
+    /// new _checked_ **asset** instance:
+    ///
+    /// - For CW20 tokens, assert the contract address is valid;
+    /// - For SDK coins, assert that the denom is included in a given whitelist;
+    ///   skip if the whitelist is not provided.
     ///
     /// ```rust
     /// use cosmwasm_std::{Addr, Api};
@@ -240,10 +243,12 @@ impl std::cmp::PartialEq<Coin> for Asset {
 }
 
 impl Asset {
-    /// Generate a message that sends a CW20 token to the specified recipient with a binary payload
+    /// Generate a message that sends a CW20 token to the specified recipient
+    /// with a binary payload.
     ///
-    /// NOTE: Only works for CW20 tokens. Returns error if invoked on an [`Asset`] instance
-    /// representing a native coin, as native coins do not have an equivalent method mplemented.
+    /// NOTE: Only works for CW20 tokens. Returns error if invoked on an `Asset`
+    /// instance representing a native coin, as native coins do not have an
+    /// equivalent method mplemented.
     ///
     /// ```rust
     /// use serde::Serialize;
@@ -283,7 +288,8 @@ impl Asset {
         }
     }
 
-    /// Generate a message that transfers the asset from the sender to to a specified account
+    /// Generate a message that transfers the asset from the sender to to a
+    /// specified account.
     ///
     /// ```rust
     /// use cosmwasm_std::{Addr, Response, StdResult};
@@ -315,11 +321,12 @@ impl Asset {
         }
     }
 
-    /// Generate a message that draws the asset from the account specified by [`from`] to the one
-    /// specified by [`to`]
+    /// Generate a message that draws the asset from the account specified by
+    /// `from` to the one specified by `to`.
     ///
-    /// NOTE: Only works for CW20 tokens. Returns error if invoked on an [`Asset`] instance
-    /// representing a native coin, as native coins do not have an equivalent method mplemented.
+    /// NOTE: Only works for CW20 tokens. Returns error if invoked on an `Asset`
+    /// instance representing a native coin, as native coins do not have an
+    /// equivalent method implemented.
     ///
     /// ```rust
     /// use cosmwasm_std::{Addr, Response, StdResult};
@@ -353,9 +360,9 @@ impl Asset {
     }
 }
 
-//--------------------------------------------------------------------------------------------------
+//------------------------------------------------------------------------------
 // Tests
-//--------------------------------------------------------------------------------------------------
+//------------------------------------------------------------------------------
 
 #[cfg(test)]
 mod tests {
