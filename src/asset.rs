@@ -5,6 +5,7 @@ use cosmwasm_std::{
     to_binary, Addr, Api, BankMsg, Binary, Coin, CosmosMsg, StdError, StdResult, Uint128, WasmMsg,
 };
 use cw20::Cw20ExecuteMsg;
+use cw_address_like::AddressLike;
 
 use crate::{AssetInfo, AssetInfoBase, AssetInfoUnchecked};
 
@@ -13,14 +14,14 @@ use crate::{AssetInfo, AssetInfoBase, AssetInfoUnchecked};
 /// Each asset instance contains two values: [`info`], which specifies the asset's type (CW20 or
 /// native), and its [`amount`], which specifies the asset's amount
 #[cw_serde]
-pub struct AssetBase<T> {
+pub struct AssetBase<T: AddressLike> {
     /// Specifies the asset's type (CW20 or native)
     pub info: AssetInfoBase<T>,
     /// Specifies the asset's amount
     pub amount: Uint128,
 }
 
-impl<T> AssetBase<T> {
+impl<T: AddressLike> AssetBase<T> {
     /// Create a new **asset** instance based on given asset info and amount
     ///
     /// To create an unchecked instance, the [`info`] parameter may be either checked or unchecked;
@@ -79,6 +80,7 @@ impl<T> AssetBase<T> {
 
 // Represents an **asset** instance that may contain unverified data; to be used in messages
 pub type AssetUnchecked = AssetBase<String>;
+
 // Represents an **asset** instance containing only verified data; to be saved in contract storage
 pub type Asset = AssetBase<Addr>;
 

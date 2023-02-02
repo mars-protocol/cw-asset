@@ -2,15 +2,16 @@ use std::{fmt, str::FromStr};
 
 use cosmwasm_schema::cw_serde;
 use cosmwasm_std::{Addr, Api, Coin, CosmosMsg, StdError, StdResult};
+use cw_address_like::AddressLike;
 
 use crate::{Asset, AssetBase, AssetInfo, AssetUnchecked};
 
 /// Represents a list of fungible tokens, each with a known amount
 #[cw_serde]
-pub struct AssetListBase<T>(Vec<AssetBase<T>>);
+pub struct AssetListBase<T: AddressLike>(Vec<AssetBase<T>>);
 
 #[allow(clippy::derivable_impls)] // clippy says `Default` can be derived here, but actually it can't
-impl<T> Default for AssetListBase<T> {
+impl<T: AddressLike> Default for AssetListBase<T> {
     fn default() -> Self {
         Self(vec![])
     }
@@ -18,6 +19,7 @@ impl<T> Default for AssetListBase<T> {
 
 /// Represents an **asset list** instance that may contain unverified data; to be used in messages
 pub type AssetListUnchecked = AssetListBase<String>;
+
 /// Represents an **asset list** instance containing only verified data; to be used in contract storage
 pub type AssetList = AssetListBase<Addr>;
 

@@ -6,6 +6,7 @@ use cosmwasm_std::{
     StdResult, Uint128, WasmQuery,
 };
 use cw20::{BalanceResponse as Cw20BalanceResponse, Cw20QueryMsg};
+use cw_address_like::AddressLike;
 use cw_storage_plus::{Key, KeyDeserialize, Prefixer, PrimaryKey};
 
 /// Represents the type of an fungible asset
@@ -17,12 +18,12 @@ use cw_storage_plus::{Key, KeyDeserialize, Prefixer, PrimaryKey};
 /// - CW1155 tokens. To create an **asset info** instance of this type, provide the contract address and token ID.
 #[cw_serde]
 #[non_exhaustive]
-pub enum AssetInfoBase<T> {
+pub enum AssetInfoBase<T: AddressLike> {
     Native(String),
     Cw20(T),
 }
 
-impl<T> AssetInfoBase<T> {
+impl<T: AddressLike> AssetInfoBase<T> {
     /// Create an **asset info** instance of the _native_ variant by providing the coin's denomination
     ///
     /// ```rust
@@ -53,6 +54,7 @@ impl<T> AssetInfoBase<T> {
 
 /// Represents an **asset info** instance that may contain unverified data; to be used in messages
 pub type AssetInfoUnchecked = AssetInfoBase<String>;
+
 /// Represents an **asset info** instance containing only verified data; to be saved in contract storage
 pub type AssetInfo = AssetInfoBase<Addr>;
 

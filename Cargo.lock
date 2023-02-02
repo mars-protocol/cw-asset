@@ -184,11 +184,21 @@ dependencies = [
 ]
 
 [[package]]
+name = "cw-address-like"
+version = "1.0.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b137a72f7ed4eaf591ec1bba7aedb062cde38ff08086276d8de6e37dc9b98621"
+dependencies = [
+ "cosmwasm-std",
+]
+
+[[package]]
 name = "cw-asset"
 version = "3.0.0"
 dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
+ "cw-address-like",
  "cw-storage-plus",
  "cw20",
  "serde",
