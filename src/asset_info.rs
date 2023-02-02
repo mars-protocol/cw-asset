@@ -1,4 +1,4 @@
-use std::{fmt, str::FromStr, any::type_name};
+use std::{any::type_name, fmt, str::FromStr};
 
 use cosmwasm_schema::cw_serde;
 use cosmwasm_std::{
@@ -469,7 +469,8 @@ mod test {
         let (key1, key2, key3) = mock_keys();
         map.save(deps.as_mut().storage, (key1.clone(), key2.clone(), key3.clone()), &42069)
             .unwrap();
-        map.save(deps.as_mut().storage, (key1.clone(), key1.clone(), key2.clone()), &11).unwrap();
+        map.save(deps.as_mut().storage, (key1.clone(), key1.clone(), key2.clone()), &11)
+            .unwrap();
         map.save(deps.as_mut().storage, (key1.clone(), key1.clone(), key3.clone()), &69420)
             .unwrap();
 
@@ -482,8 +483,7 @@ mod test {
         assert_eq!(items[1], (key3.clone(), 69420));
         assert_eq!(items[0], (key2.clone(), 11));
 
-        let val1 =
-            map.load(deps.as_ref().storage, (key1, key2, key3)).unwrap();
+        let val1 = map.load(deps.as_ref().storage, (key1, key2, key3)).unwrap();
         assert_eq!(val1, 42069);
     }
 }

@@ -71,8 +71,7 @@ impl AssetListUnchecked {
         api: &dyn Api,
         optional_whitelist: Option<&[&str]>,
     ) -> Result<AssetList, AssetError> {
-       self
-            .0
+        self.0
             .iter()
             .map(|asset| asset.check(api, optional_whitelist))
             .collect::<Result<Vec<_>, _>>()
@@ -610,7 +609,7 @@ mod tests {
             AssetList::from(vec![
                 Asset::native("uusd", 34710u128),
                 Asset::new(mock_token(), 44444u128)
-            ])
+            ]),
         );
     }
 
@@ -698,8 +697,8 @@ mod tests {
                     })
                     .unwrap(),
                     funds: vec![]
-                })
-            ]
+                }),
+            ],
         );
     }
 }

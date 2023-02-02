@@ -5,7 +5,7 @@ use cosmwasm_std::{to_binary, Addr, Api, BankMsg, Binary, Coin, CosmosMsg, Uint1
 use cw20::Cw20ExecuteMsg;
 use cw_address_like::AddressLike;
 
-use crate::{AssetInfo, AssetInfoBase, AssetInfoUnchecked, AssetError};
+use crate::{AssetError, AssetInfo, AssetInfoBase, AssetInfoUnchecked};
 
 /// Represents a fungible asset with a known amount
 ///
@@ -93,7 +93,7 @@ impl FromStr for AssetUnchecked {
                 if words.len() != 3 {
                     return Err(AssetError::InvalidAssetFormat {
                         received: s.into(),
-                    })
+                    });
                 }
                 AssetInfoUnchecked::from_str(&format!("{}:{}", words[0], words[1]))?
             },
@@ -105,10 +105,8 @@ impl FromStr for AssetUnchecked {
         };
 
         let amount_str = words[words.len() - 1];
-        let amount = Uint128::from_str(amount_str).map_err(|_| {
-            AssetError::InvalidAssetAmount {
-                amount: amount_str.into(),
-            }
+        let amount = Uint128::from_str(amount_str).map_err(|_| AssetError::InvalidAssetAmount {
+            amount: amount_str.into(),
         })?;
 
         Ok(AssetUnchecked {
@@ -399,7 +397,7 @@ mod tests {
             Asset {
                 info: AssetInfo::Native(String::from("uusd")),
                 amount: Uint128::new(123456u128)
-            }
+            },
         );
 
         let asset = Asset::cw20(Addr::unchecked("mock_token"), 123456u128);
@@ -408,7 +406,7 @@ mod tests {
             Asset {
                 info: AssetInfo::Cw20(Addr::unchecked("mock_token")),
                 amount: Uint128::new(123456u128)
-            }
+            },
         );
 
         let asset = Asset::native("uusd", 123456u128);
@@ -417,7 +415,7 @@ mod tests {
             Asset {
                 info: AssetInfo::Native(String::from("uusd")),
                 amount: Uint128::new(123456u128)
-            }
+            },
         )
     }
 
@@ -514,7 +512,7 @@ mod tests {
         );
 
         let s = "native:uusd:12345";
-        assert_eq!(AssetUnchecked::from_str(s).unwrap(), AssetUnchecked::native("uusd", 12345u128),);
+        assert_eq!(AssetUnchecked::from_str(s).unwrap(), AssetUnchecked::native("uusd", 12345u128));
 
         let s = "cw20:mock_token:12345";
         assert_eq!(
@@ -537,7 +535,7 @@ mod tests {
             AssetUnchecked::native(
                 "ibc/27394FB092D2ECCD56123C74F36E4C1F926001CEADA9CA97EA622B25F41E5EB2",
                 69420u128
-            )
+            ),
         );
 
         let asset = AssetUnchecked::from_sdk_string(
@@ -549,7 +547,7 @@ mod tests {
             AssetUnchecked::native(
                 "factory/osmo1z926ax906k0ycsuckele6x5hh66e2m4m6ry7dn",
                 88888u128
-            )
+            ),
         );
 
         let err = AssetUnchecked::from_sdk_string("ngmi");
@@ -583,7 +581,7 @@ mod tests {
             Err(AssetError::UnacceptedDenom {
                 denom: "uatom".into(),
                 whitelist: "uusd|uluna|uosmo".into(),
-            })
+            }),
         );
     }
 
@@ -638,7 +636,7 @@ mod tests {
                 })
                 .unwrap(),
                 funds: vec![]
-            })
+            }),
         );
 
         let msg = coin.transfer_msg("alice").unwrap();
@@ -647,7 +645,7 @@ mod tests {
             CosmosMsg::Bank(BankMsg::Send {
                 to_address: String::from("alice"),
                 amount: vec![Coin::new(123456, "uusd")]
-            })
+            }),
         );
 
         let msg = token.transfer_from_msg("bob", "charlie").unwrap();
@@ -662,7 +660,7 @@ mod tests {
                 })
                 .unwrap(),
                 funds: vec![]
-            })
+            }),
         );
         let err = coin.transfer_from_msg("bob", "charlie");
         assert_eq!(
