@@ -185,7 +185,7 @@ dependencies = [
 
 [[package]]
 name = "cw-asset"
-version = "2.4.0"
+version = "3.0.0"
 dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
