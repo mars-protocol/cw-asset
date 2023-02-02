@@ -167,10 +167,10 @@ impl AssetInfo {
     /// Query an address' balance of the asset
     ///
     /// ```rust
-    /// use cosmwasm_std::{Addr, Deps, StdResult, Uint128};
-    /// use cw_asset::AssetInfo;
+    /// use cosmwasm_std::{Addr, Deps, Uint128};
+    /// use cw_asset::{AssetError, AssetInfo};
     ///
-    /// fn query_uusd_balance(deps: Deps, account_addr: &Addr) -> StdResult<Uint128> {
+    /// fn query_uusd_balance(deps: Deps, account_addr: &Addr) -> Result<Uint128, AssetError> {
     ///     let info = AssetInfo::native("uusd");
     ///     info.query_balance(&deps.querier, "account_addr")
     /// }
@@ -179,7 +179,7 @@ impl AssetInfo {
         &self,
         querier: &QuerierWrapper,
         address: T,
-    ) -> StdResult<Uint128> {
+    ) -> Result<Uint128, AssetError> {
         match self {
             AssetInfo::Native(denom) => {
                 let response: BalanceResponse =

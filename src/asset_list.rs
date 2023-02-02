@@ -1,7 +1,7 @@
 use std::{fmt, str::FromStr};
 
 use cosmwasm_schema::cw_serde;
-use cosmwasm_std::{Addr, Api, Coin, CosmosMsg, StdResult};
+use cosmwasm_std::{Addr, Api, Coin, CosmosMsg};
 use cw_address_like::AddressLike;
 
 use crate::{Asset, AssetBase, AssetError, AssetInfo, AssetUnchecked};
@@ -306,7 +306,7 @@ impl AssetList {
     ///     .unwrap()
     ///     .amount;  // should have increased to 23456
     /// ```
-    pub fn add(&mut self, asset_to_add: &Asset) -> StdResult<&mut Self> {
+    pub fn add(&mut self, asset_to_add: &Asset) -> Result<&mut Self, AssetError> {
         match self.0.iter_mut().find(|asset| asset.info == asset_to_add.info) {
             Some(asset) => {
                 asset.amount = asset.amount.checked_add(asset_to_add.amount)?;
@@ -342,7 +342,7 @@ impl AssetList {
     ///     .unwrap()
     ///     .amount;  // should have increased to 23456
     /// ```
-    pub fn add_many(&mut self, assets_to_add: &AssetList) -> StdResult<&mut Self> {
+    pub fn add_many(&mut self, assets_to_add: &AssetList) -> Result<&mut Self, AssetError> {
         for asset in &assets_to_add.0 {
             self.add(asset)?;
         }
