@@ -19,8 +19,7 @@ impl Cw20Querier {
                     None => {
                         return Err(SystemError::InvalidRequest {
                             error: format!(
-                                "[mock]: cw20 balances not set for token {:?}",
-                                contract_addr
+                                "[mock]: cw20 balances not set for token {contract_addr:?}",
                             ),
                             request: Default::default(),
                         })
@@ -32,7 +31,7 @@ impl Cw20Querier {
                     Some(balance) => balance,
                     None => {
                         return Err(SystemError::InvalidRequest {
-                            error: format!("[mock]: cw20 balance not set for user {:?}", address),
+                            error: format!("[mock]: cw20 balance not set for user {address:?}"),
                             request: Default::default(),
                         })
                         .into()
@@ -47,7 +46,7 @@ impl Cw20Querier {
             },
 
             query => Err(SystemError::InvalidRequest {
-                error: format!("[mock]: unsupported cw20 query {:?}", query),
+                error: format!("[mock]: unsupported cw20 query {query:?}"),
                 request: Default::default(),
             })
             .into(),

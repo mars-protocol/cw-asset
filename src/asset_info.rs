@@ -71,7 +71,7 @@ impl FromStr for AssetInfoUnchecked {
                 if words.len() != 2 {
                     return Err(AssetError::InvalidAssetInfoFormat {
                         received: s.into(),
-                        should_be: format!("native:{{denom}}"),
+                        should_be: "native:{denom}".into(),
                     });
                 }
                 Ok(AssetInfoUnchecked::Native(String::from(words[1])))
@@ -80,7 +80,7 @@ impl FromStr for AssetInfoUnchecked {
                 if words.len() != 2 {
                     return Err(AssetError::InvalidAssetInfoFormat {
                         received: s.into(),
-                        should_be: format!("cw20:{{contract_addr}}"),
+                        should_be: "cw20:{contract_addr}".into(),
                     });
                 }
                 Ok(AssetInfoUnchecked::Cw20(String::from(words[1])))
@@ -157,8 +157,8 @@ impl AssetInfoUnchecked {
 impl fmt::Display for AssetInfo {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            AssetInfo::Cw20(contract_addr) => write!(f, "cw20:{}", contract_addr),
-            AssetInfo::Native(denom) => write!(f, "native:{}", denom),
+            AssetInfo::Cw20(contract_addr) => write!(f, "cw20:{contract_addr}"),
+            AssetInfo::Native(denom) => write!(f, "native:{denom}"),
         }
     }
 }
@@ -211,7 +211,7 @@ impl AssetInfo {
                 if words.len() != 2 {
                     return Err(AssetError::InvalidAssetInfoFormat {
                         received: s.into(),
-                        should_be: format!("native:{{denom}}"),
+                        should_be: "native:{denom}".into(),
                     });
                 }
                 Ok(AssetInfo::Native(String::from(words[1])))
@@ -220,7 +220,7 @@ impl AssetInfo {
                 if words.len() != 2 {
                     return Err(AssetError::InvalidAssetInfoFormat {
                         received: s.into(),
-                        should_be: format!("cw20:{{contract_addr}}"),
+                        should_be: "cw20:{contract_addr}".into(),
                     });
                 }
                 Ok(AssetInfo::Cw20(Addr::unchecked(words[1])))
@@ -305,11 +305,11 @@ mod test {
         let astro = AssetInfo::cw20(Addr::unchecked("astro_token"));
         let mars = AssetInfo::cw20(Addr::unchecked("mars_token"));
 
-        assert_eq!(uluna == uusd, false);
-        assert_eq!(uluna == astro, false);
-        assert_eq!(astro == mars, false);
-        assert_eq!(uluna == uluna.clone(), true);
-        assert_eq!(astro == astro.clone(), true);
+        assert!(uluna != uusd);
+        assert!(uluna != astro);
+        assert!(astro != mars);
+        assert!(uluna == uluna.clone());
+        assert!(astro == astro.clone());
     }
 
     #[test]
@@ -483,7 +483,7 @@ mod test {
         assert_eq!(items[0], (key2.clone(), 11));
 
         let val1 =
-            map.load(deps.as_ref().storage, (key1.clone(), key2.clone(), key3.clone())).unwrap();
+            map.load(deps.as_ref().storage, (key1, key2, key3)).unwrap();
         assert_eq!(val1, 42069);
     }
 }

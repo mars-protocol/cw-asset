@@ -26,7 +26,7 @@ impl Querier for CustomMockQuerier {
             Ok(v) => v,
             Err(e) => {
                 return Err(SystemError::InvalidRequest {
-                    error: format!("[mock]: failed to parse query request {}", e),
+                    error: format!("[mock]: failed to parse query request {e}"),
                     request: bin_request.into(),
                 })
                 .into()
@@ -50,7 +50,7 @@ impl CustomMockQuerier {
                     return self.cw20_querier.handle_query(&contract_addr, cw20_query);
                 }
 
-                panic!("[mock]: unsupported wasm query {:?}", msg);
+                panic!("[mock]: unsupported wasm query {msg:?}");
             },
 
             _ => self.base.handle_query(request),

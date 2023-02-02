@@ -453,9 +453,9 @@ mod tests {
         let uusd = Asset::native("uusd", 69u128);
         let astro = Asset::cw20(Addr::unchecked("astro_token"), 69u128);
 
-        assert_eq!(uluna1 == uluna2, false);
-        assert_eq!(uluna1 == uusd, false);
-        assert_eq!(astro == astro.clone(), true);
+        assert!(uluna1 != uluna2);
+        assert!(uluna1 != uusd);
+        assert!(astro == astro.clone());
     }
 
     #[test]
@@ -469,14 +469,14 @@ mod tests {
         };
         let astro = Asset::cw20(Addr::unchecked("astro_token"), 69u128);
 
-        assert_eq!(uluna == uusd_coin, false);
-        assert_eq!(uusd_coin == uluna, false);
-        assert_eq!(uusd_1 == uusd_coin, true);
-        assert_eq!(uusd_coin == uusd_1, true);
-        assert_eq!(uusd_2 == uusd_coin, false);
-        assert_eq!(uusd_coin == uusd_2, false);
-        assert_eq!(astro == uusd_coin, false);
-        assert_eq!(uusd_coin == astro, false);
+        assert!(uluna != uusd_coin);
+        assert!(uusd_coin != uluna);
+        assert!(uusd_1 == uusd_coin);
+        assert!(uusd_coin == uusd_1);
+        assert!(uusd_2 != uusd_coin);
+        assert!(uusd_coin != uusd_2);
+        assert!(astro != uusd_coin);
+        assert!(uusd_coin != astro);
     }
 
     #[test]
@@ -553,7 +553,7 @@ mod tests {
         );
 
         let err = AssetUnchecked::from_sdk_string("ngmi");
-        assert_eq!(err.is_err(), true);
+        assert!(err.is_err());
     }
 
     #[test]

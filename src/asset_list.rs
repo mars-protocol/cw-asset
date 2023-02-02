@@ -35,7 +35,7 @@ impl FromStr for AssetListUnchecked {
 
         s
             .split(',')
-            .map(|s| AssetUnchecked::from_str(s))
+            .map(AssetUnchecked::from_str)
             .collect::<Result<_, _>>()
             .map(Self)
     }
@@ -85,10 +85,14 @@ impl fmt::Display for AssetList {
         let s = if self.is_empty() {
             "[]".to_string()
         } else {
-            self.0.iter().map(|asset| asset.to_string()).collect::<Vec<String>>().join(",")
+            self.0
+                .iter()
+                .map(|asset| asset.to_string())
+                .collect::<Vec<_>>()
+                .join(",")
         };
 
-        write!(f, "{}", s)
+        write!(f, "{s}")
     }
 }
 
@@ -558,7 +562,7 @@ mod tests {
 
         let checked = mock_list();
         let unchecked: AssetListUnchecked = checked.clone().into();
-        assert_eq!(unchecked.check(&api, None).unwrap(), checked.clone());
+        assert_eq!(unchecked.check(&api, None).unwrap(), checked);
         assert_eq!(unchecked.check(&api, Some(&["uusd", "uluna"])).unwrap(), checked);
         assert_eq!(
             unchecked.check(&api, Some(&["uatom", "uosmo", "uscrt"])),
@@ -628,7 +632,7 @@ mod tests {
         let mut list = mock_list();
         list.add_many(&mock_list()).unwrap();
 
-        let expected = mock_list().apply(|a| a.amount = a.amount * Uint128::new(2)).clone();
+        let expected = mock_list().apply(|a| a.amount *= Uint128::new(2)).clone();
         assert_eq!(list, expected);
     }
 
