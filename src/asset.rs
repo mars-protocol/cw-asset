@@ -1,9 +1,7 @@
 use std::{convert::TryFrom, fmt, str::FromStr};
 
 use cosmwasm_schema::cw_serde;
-use cosmwasm_std::{
-    to_binary, Addr, Api, BankMsg, Binary, Coin, CosmosMsg, StdError, StdResult, Uint128, WasmMsg,
-};
+use cosmwasm_std::{to_binary, Addr, Api, BankMsg, Binary, Coin, CosmosMsg, Uint128, WasmMsg};
 use cw20::Cw20ExecuteMsg;
 use cw_address_like::AddressLike;
 
@@ -175,7 +173,11 @@ impl AssetUnchecked {
     ///     }
     /// }
     /// ```
-    pub fn check(&self, api: &dyn Api, optional_whitelist: Option<&[&str]>) -> Result<Asset, AssetError> {
+    pub fn check(
+        &self,
+        api: &dyn Api,
+        optional_whitelist: Option<&[&str]>,
+    ) -> Result<Asset, AssetError> {
         Ok(Asset {
             info: self.info.check(api, optional_whitelist)?,
             amount: self.amount,
@@ -205,23 +207,24 @@ impl From<&Coin> for Asset {
 }
 
 impl TryFrom<Asset> for Coin {
-    type Error = StdError;
+    type Error = AssetError;
+
     fn try_from(asset: Asset) -> Result<Self, Self::Error> {
         match &asset.info {
             AssetInfo::Native(denom) => Ok(Coin {
                 denom: denom.clone(),
                 amount: asset.amount,
             }),
-            AssetInfo::Cw20(_) => Err(StdError::generic_err(format!(
-                "cannot cast asset {} into cosmwasm_std::Coin",
-                asset
-            ))),
+            AssetInfo::Cw20(_) => Err(AssetError::CannotCastToStdCoin {
+                asset: asset.to_string(),
+            }),
         }
     }
 }
 
 impl TryFrom<&Asset> for Coin {
-    type Error = StdError;
+    type Error = AssetError;
+
     fn try_from(asset: &Asset) -> Result<Self, Self::Error> {
         Coin::try_from(asset.clone())
     }
@@ -258,20 +261,22 @@ impl Asset {
     ///     MockCommand {},
     /// }
     ///
-    /// use cosmwasm_std::{to_binary, Addr, Response, StdResult};
-    /// use cw_asset::Asset;
+    /// use cosmwasm_std::{to_binary, Addr, Response};
+    /// use cw_asset::{Asset, AssetError};
     ///
     /// fn send_asset(
     ///     asset: &Asset,
     ///     contract_addr: &Addr,
     ///     msg: &MockReceiveMsg,
-    /// ) -> StdResult<Response> {
+    /// ) -> Result<Response, AssetError> {
     ///     let msg = asset.send_msg(contract_addr, to_binary(msg)?)?;
     ///
-    ///     Ok(Response::new().add_message(msg).add_attribute("asset_sent", asset.to_string()))
+    ///     Ok(Response::new()
+    ///         .add_message(msg)
+    ///         .add_attribute("asset_sent", asset.to_string()))
     /// }
     /// ```
-    pub fn send_msg<A: Into<String>>(&self, to: A, msg: Binary) -> StdResult<CosmosMsg> {
+    pub fn send_msg<A: Into<String>>(&self, to: A, msg: Binary) -> Result<CosmosMsg, AssetError> {
         match &self.info {
             AssetInfo::Cw20(contract_addr) => Ok(CosmosMsg::Wasm(WasmMsg::Execute {
                 contract_addr: contract_addr.into(),
@@ -282,9 +287,9 @@ impl Asset {
                 })?,
                 funds: vec![],
             })),
-            AssetInfo::Native(_) => {
-                Err(StdError::generic_err("native coins do not have `send` method"))
-            },
+            AssetInfo::Native(_) => Err(AssetError::UnavailableMethodForNative {
+                method: "send".into(),
+            }),
         }
     }
 
@@ -292,16 +297,18 @@ impl Asset {
     /// specified account.
     ///
     /// ```rust
-    /// use cosmwasm_std::{Addr, Response, StdResult};
-    /// use cw_asset::Asset;
+    /// use cosmwasm_std::{Addr, Response};
+    /// use cw_asset::{Asset, AssetError};
     ///
-    /// fn transfer_asset(asset: &Asset, recipient_addr: &Addr) -> StdResult<Response> {
+    /// fn transfer_asset(asset: &Asset, recipient_addr: &Addr) -> Result<Response, AssetError> {
     ///     let msg = asset.transfer_msg(recipient_addr)?;
     ///
-    ///     Ok(Response::new().add_message(msg).add_attribute("asset_sent", asset.to_string()))
+    ///     Ok(Response::new()
+    ///         .add_message(msg)
+    ///         .add_attribute("asset_sent", asset.to_string()))
     /// }
     /// ```
-    pub fn transfer_msg<A: Into<String>>(&self, to: A) -> StdResult<CosmosMsg> {
+    pub fn transfer_msg<A: Into<String>>(&self, to: A) -> Result<CosmosMsg, AssetError> {
         match &self.info {
             AssetInfo::Native(denom) => Ok(CosmosMsg::Bank(BankMsg::Send {
                 to_address: to.into(),
@@ -329,20 +336,26 @@ impl Asset {
     /// equivalent method implemented.
     ///
     /// ```rust
-    /// use cosmwasm_std::{Addr, Response, StdResult};
-    /// use cw_asset::Asset;
+    /// use cosmwasm_std::{Addr, Response};
+    /// use cw_asset::{Asset, AssetError};
     ///
-    /// fn draw_asset(asset: &Asset, user_addr: &Addr, contract_addr: &Addr) -> StdResult<Response> {
+    /// fn draw_asset(
+    ///     asset: &Asset,
+    ///     user_addr: &Addr,
+    ///     contract_addr: &Addr,
+    /// ) -> Result<Response, AssetError> {
     ///     let msg = asset.transfer_from_msg(user_addr, contract_addr)?;
     ///
-    ///     Ok(Response::new().add_message(msg).add_attribute("asset_drawn", asset.to_string()))
+    ///     Ok(Response::new()
+    ///         .add_message(msg)
+    ///         .add_attribute("asset_drawn", asset.to_string()))
     /// }
     /// ```
     pub fn transfer_from_msg<A: Into<String>, B: Into<String>>(
         &self,
         from: A,
         to: B,
-    ) -> StdResult<CosmosMsg> {
+    ) -> Result<CosmosMsg, AssetError> {
         match &self.info {
             AssetInfo::Cw20(contract_addr) => Ok(CosmosMsg::Wasm(WasmMsg::Execute {
                 contract_addr: contract_addr.into(),
@@ -353,9 +366,9 @@ impl Asset {
                 })?,
                 funds: vec![],
             })),
-            AssetInfo::Native(_) => {
-                Err(StdError::generic_err("native coins do not have `transfer_from` method"))
-            },
+            AssetInfo::Native(_) => Err(AssetError::UnavailableMethodForNative {
+                method: "transfer_from".into(),
+            }),
         }
     }
 }
@@ -366,7 +379,7 @@ impl Asset {
 
 #[cfg(test)]
 mod tests {
-    use cosmwasm_std::testing::MockApi;
+    use cosmwasm_std::{testing::MockApi, StdError};
     use serde::Serialize;
 
     use super::*;
@@ -421,15 +434,15 @@ mod tests {
         let astro = Asset::cw20(Addr::unchecked("astro_token"), 69u128);
         assert_eq!(
             Coin::try_from(&astro),
-            Err(StdError::generic_err(
-                "cannot cast asset cw20:astro_token:69 into cosmwasm_std::Coin"
-            )),
+            Err(AssetError::CannotCastToStdCoin {
+                asset: "cw20:astro_token:69".into(),
+            }),
         );
         assert_eq!(
             Coin::try_from(astro),
-            Err(StdError::generic_err(
-                "cannot cast asset cw20:astro_token:69 into cosmwasm_std::Coin"
-            )),
+            Err(AssetError::CannotCastToStdCoin {
+                asset: "cw20:astro_token:69".into(),
+            }),
         );
     }
 
@@ -607,7 +620,12 @@ mod tests {
         );
 
         let err = coin.send_msg("mock_contract", bin_msg);
-        assert_eq!(err, Err(StdError::generic_err("native coins do not have `send` method")));
+        assert_eq!(
+            err,
+            Err(AssetError::UnavailableMethodForNative {
+                method: "send".into(),
+            }),
+        );
 
         let msg = token.transfer_msg("alice").unwrap();
         assert_eq!(
@@ -649,7 +667,9 @@ mod tests {
         let err = coin.transfer_from_msg("bob", "charlie");
         assert_eq!(
             err,
-            Err(StdError::generic_err("native coins do not have `transfer_from` method"))
+            Err(AssetError::UnavailableMethodForNative {
+                method: "transfer_from".into(),
+            }),
         );
     }
 }

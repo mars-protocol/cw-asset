@@ -1,10 +1,13 @@
-use cosmwasm_std::StdError;
+use cosmwasm_std::{StdError, OverflowError};
 use thiserror::Error;
 
 #[derive(Error, Debug, PartialEq)]
 pub enum AssetError {
-    #[error("{0}")]
+    #[error("std error encountered while handling assets: {0}")]
     Std(#[from] StdError),
+
+    #[error("overflow error encountered while handling assets: {0}")]
+    Overflow(#[from] OverflowError),
 
     #[error("invalid asset type `{ty}`; must be either `native` or `cw20`")]
     InvalidAssetType {
@@ -39,5 +42,20 @@ pub enum AssetError {
     UnacceptedDenom {
         denom: String,
         whitelist: String,
+    },
+
+    #[error("asset `{info}` is not found in asset list")]
+    NotFoundInList {
+        info: String,
+    },
+
+    #[error("native coins do not have the `{method}` method")]
+    UnavailableMethodForNative {
+        method: String,
+    },
+
+    #[error("cannot cast asset {asset} to cosmwasm_std::Coin")]
+    CannotCastToStdCoin {
+        asset: String,
     },
 }

@@ -7,10 +7,10 @@
 //! The following code generates messages the sends some SDK coins and CW20 tokens to a recipient:
 //!
 //! ```rust
-//! use cosmwasm_std::{Api, Response, StdResult};
-//! use cw_asset::Asset;
+//! use cosmwasm_std::{Api, Response};
+//! use cw_asset::{Asset, AssetError};
 //!
-//! fn transfer_two_assets(api: &dyn Api) -> StdResult<Response> {
+//! fn transfer_two_assets(api: &dyn Api) -> Result<Response, AssetError> {
 //!     let asset1 = Asset::native("uusd", 12345u128);
 //!     let msg1 = asset1.transfer_msg("recipient_addr")?;
 //!
@@ -30,10 +30,10 @@
 //! An [`AssetList`] struct is also provided for dealing with multiple assets at the same time:
 //!
 //! ```rust
-//! use cosmwasm_std::{Api, Response, StdResult};
-//! use cw_asset::{Asset, AssetList};
+//! use cosmwasm_std::{Api, Response};
+//! use cw_asset::{Asset, AssetError, AssetList};
 //!
-//! fn transfer_multiple_assets(api: &dyn Api) -> StdResult<Response> {
+//! fn transfer_multiple_assets(api: &dyn Api) -> Result<Response, AssetError> {
 //!     let assets = AssetList::from(vec![
 //!         Asset::native("uusd", 12345u128),
 //!         Asset::cw20(api.addr_validate("token_addr")?, 67890u128),

@@ -1,7 +1,7 @@
 use std::{fmt, str::FromStr};
 
 use cosmwasm_schema::cw_serde;
-use cosmwasm_std::{Addr, Api, Coin, CosmosMsg, StdError, StdResult};
+use cosmwasm_std::{Addr, Api, Coin, CosmosMsg, StdResult};
 use cw_address_like::AddressLike;
 
 use crate::{Asset, AssetBase, AssetError, AssetInfo, AssetUnchecked};
@@ -377,16 +377,15 @@ impl AssetList {
     ///
     /// let len = list.len();  // should be zero, as uluna is purged from the list
     /// ```
-    pub fn deduct(&mut self, asset_to_deduct: &Asset) -> StdResult<&mut Self> {
+    pub fn deduct(&mut self, asset_to_deduct: &Asset) -> Result<&mut Self, AssetError> {
         match self.0.iter_mut().find(|asset| asset.info == asset_to_deduct.info) {
             Some(asset) => {
                 asset.amount = asset.amount.checked_sub(asset_to_deduct.amount)?;
             },
             None => {
-                return Err(StdError::generic_err(format!(
-                    "not found in asset list: {}",
-                    asset_to_deduct.info
-                )));
+                return Err(AssetError::NotFoundInList {
+                    info: asset_to_deduct.info.to_string(),
+                });
             },
         }
         Ok(self.purge())
@@ -414,7 +413,7 @@ impl AssetList {
     ///
     /// let len = list.len();  // should be zero, as uusd is purged from the list
     /// ```
-    pub fn deduct_many(&mut self, assets_to_deduct: &AssetList) -> StdResult<&mut Self> {
+    pub fn deduct_many(&mut self, assets_to_deduct: &AssetList) -> Result<&mut Self, AssetError> {
         for asset in &assets_to_deduct.0 {
             self.deduct(asset)?;
         }
@@ -424,20 +423,28 @@ impl AssetList {
     /// Generate a transfer messages for every asset in the list
     ///
     /// ```rust
-    /// use cosmwasm_std::{Addr, Response, StdResult};
-    /// use cw_asset::AssetList;
+    /// use cosmwasm_std::{Addr, Response};
+    /// use cw_asset::{AssetError, AssetList};
     ///
-    /// fn transfer_assets(list: &AssetList, recipient_addr: &Addr) -> StdResult<Response> {
+    /// fn transfer_assets(
+    ///     list: &AssetList,
+    ///     recipient_addr: &Addr,
+    /// ) -> Result<Response, AssetError> {
     ///     let msgs = list.transfer_msgs(recipient_addr)?;
     ///
-    ///     Ok(Response::new().add_messages(msgs).add_attribute("assets_sent", list.to_string()))
+    ///     Ok(Response::new()
+    ///         .add_messages(msgs)
+    ///         .add_attribute("assets_sent", list.to_string()))
     /// }
     /// ```
-    pub fn transfer_msgs<A: Into<String> + Clone>(&self, to: A) -> StdResult<Vec<CosmosMsg>> {
+    pub fn transfer_msgs<A: Into<String> + Clone>(
+        &self,
+        to: A,
+    ) -> Result<Vec<CosmosMsg>, AssetError> {
         self.0
             .iter()
             .map(|asset| asset.transfer_msg(to.clone()))
-            .collect::<StdResult<Vec<CosmosMsg>>>()
+            .collect()
     }
 }
 
@@ -447,7 +454,8 @@ impl AssetList {
 
 #[cfg(test)]
 mod test_helpers {
-    use super::{super::asset::Asset, *};
+    use super::*;
+    use crate::Asset;
 
     pub fn uluna() -> AssetInfo {
         AssetInfo::native("uluna")
@@ -473,7 +481,7 @@ mod test_helpers {
 mod tests {
     use cosmwasm_std::{
         testing::MockApi, to_binary, BankMsg, Coin, CosmosMsg, Decimal, OverflowError,
-        OverflowOperation, Uint128, WasmMsg,
+        OverflowOperation, StdError, Uint128, WasmMsg,
     };
     use cw20::Cw20ExecuteMsg;
 
@@ -637,7 +645,12 @@ mod tests {
         assert_eq!(asset_option, None);
 
         let err = list.deduct(&Asset::new(uusd(), 57075u128));
-        assert_eq!(err, Err(StdError::generic_err("not found in asset list: native:uusd")));
+        assert_eq!(
+            err,
+            Err(AssetError::NotFoundInList {
+                info: "native:uusd".into(),
+            }),
+        );
 
         list.deduct(&Asset::new(mock_token(), 12345u128)).unwrap();
         let asset = list.find(&mock_token()).unwrap();
@@ -646,11 +659,12 @@ mod tests {
         let err = list.deduct(&Asset::new(mock_token(), 99999u128));
         assert_eq!(
             err,
-            Err(StdError::overflow(OverflowError::new(
+            Err(OverflowError::new(
                 OverflowOperation::Sub,
                 Uint128::new(76543),
                 Uint128::new(99999)
-            )))
+            )
+            .into()),
         );
     }
 
