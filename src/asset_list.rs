@@ -4,7 +4,7 @@ use cosmwasm_schema::cw_serde;
 use cosmwasm_std::{Addr, Api, Coin, CosmosMsg, StdError, StdResult};
 use cw_address_like::AddressLike;
 
-use crate::{Asset, AssetBase, AssetInfo, AssetUnchecked};
+use crate::{Asset, AssetBase, AssetError, AssetInfo, AssetUnchecked};
 
 /// Represents a list of fungible tokens, each with a known amount
 #[cw_serde]
@@ -24,21 +24,18 @@ pub type AssetListUnchecked = AssetListBase<String>;
 pub type AssetList = AssetListBase<Addr>;
 
 impl FromStr for AssetListUnchecked {
-    type Err = StdError;
+    type Err = AssetError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         if s.is_empty() {
             return Ok(Self(vec![]));
         }
 
-        let assets = s
+        s
             .split(',')
-            .collect::<Vec<&str>>()
-            .iter()
             .map(|s| AssetUnchecked::from_str(s))
-            .collect::<Result<Vec<AssetUnchecked>, Self::Err>>()?;
-
-        Ok(Self(assets))
+            .collect::<Result<_, _>>()
+            .map(Self)
     }
 }
 
@@ -70,14 +67,13 @@ impl AssetListUnchecked {
         &self,
         api: &dyn Api,
         optional_whitelist: Option<&[&str]>,
-    ) -> StdResult<AssetList> {
-        let assets = self
+    ) -> Result<AssetList, AssetError> {
+       self
             .0
             .iter()
             .map(|asset| asset.check(api, optional_whitelist))
-            .collect::<StdResult<Vec<Asset>>>()?;
-
-        Ok(AssetList::from(assets))
+            .collect::<Result<Vec<_>, _>>()
+            .map(AssetList::from)
     }
 }
 
@@ -488,23 +484,25 @@ mod tests {
         let s = "native:uusd:69420,cw20:mock_token";
         assert_eq!(
             AssetListUnchecked::from_str(s),
-            Err(StdError::generic_err("invalid asset format `cw20:mock_token`; must be in format `native:{denom}:{amount}` or `cw20:{contract_addr}:{amount}`")),
+            Err(AssetError::InvalidAssetFormat {
+                received: "cw20:mock_token".into(),
+            }),
         );
 
         let s = "native:uusd:69420,cw721:galactic_punk:1";
         assert_eq!(
             AssetListUnchecked::from_str(s),
-            Err(StdError::generic_err(
-                "invalid asset type `cw721`; must be `native` or `cw20` or `cw1155`"
-            )),
+            Err(AssetError::InvalidAssetType {
+                ty: "cw721".into(),
+            }),
         );
 
         let s = "native:uusd:69420,cw20:mock_token:ngmi";
         assert_eq!(
             AssetListUnchecked::from_str(s),
-            Err(StdError::generic_err(
-                "invalid asset amount `ngmi`; must be a 128-bit unsigned integer"
-            )),
+            Err(AssetError::InvalidAssetAmount {
+                amount: "ngmi".into(),
+            }),
         );
 
         let s = "native:uusd:69420,cw20:mock_token:88888";
@@ -549,7 +547,10 @@ mod tests {
         assert_eq!(unchecked.check(&api, Some(&["uusd", "uluna"])).unwrap(), checked);
         assert_eq!(
             unchecked.check(&api, Some(&["uatom", "uosmo", "uscrt"])),
-            Err(StdError::generic_err("invalid denom uusd; must be uatom|uosmo|uscrt")),
+            Err(AssetError::UnacceptedDenom {
+                denom: "uusd".into(),
+                whitelist: "uatom|uosmo|uscrt".into(),
+            }),
         );
     }
 
@@ -564,7 +565,7 @@ mod tests {
 
         assert_eq!(
             unchecked.check(&api, None).unwrap_err(),
-            StdError::generic_err("Invalid input: address not normalized"),
+            StdError::generic_err("Invalid input: address not normalized").into(),
         );
     }
 

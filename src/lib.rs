@@ -69,11 +69,11 @@
 //!
 //! ```rust
 //! use cosmwasm_std::{Api, StdResult};
-//! use cw_asset::{Asset, AssetUnchecked};
+//! use cw_asset::{Asset, AssetError, AssetUnchecked};
 //!
 //! const ACCEPTED_DENOMS: &[&str] = &["uatom", "uosmo", "uluna"];
 //!
-//! fn validate_deposit(api: &dyn Api, asset_unchecked: AssetUnchecked) -> StdResult<()> {
+//! fn validate_deposit(api: &dyn Api, asset_unchecked: AssetUnchecked) -> Result<(), AssetError> {
 //!     let asset: Asset = asset_unchecked.check(api, Some(ACCEPTED_DENOMS))?;
 //!     Ok(())
 //! }
@@ -82,10 +82,12 @@
 mod asset;
 mod asset_info;
 mod asset_list;
+mod error;
 
 pub use asset::*;
 pub use asset_info::*;
 pub use asset_list::*;
+pub use error::AssetError;
 
 #[cfg(test)]
 mod testing;

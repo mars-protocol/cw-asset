@@ -1,4 +1,4 @@
-use std::{fmt, str::FromStr};
+use std::{fmt, str::FromStr, any::type_name};
 
 use cosmwasm_schema::cw_serde;
 use cosmwasm_std::{
@@ -8,6 +8,8 @@ use cosmwasm_std::{
 use cw20::{BalanceResponse as Cw20BalanceResponse, Cw20QueryMsg};
 use cw_address_like::AddressLike;
 use cw_storage_plus::{Key, KeyDeserialize, Prefixer, PrimaryKey};
+
+use crate::AssetError;
 
 /// Represents the type of an fungible asset
 ///
@@ -59,7 +61,7 @@ pub type AssetInfoUnchecked = AssetInfoBase<String>;
 pub type AssetInfo = AssetInfoBase<Addr>;
 
 impl FromStr for AssetInfoUnchecked {
-    type Err = StdError;
+    type Err = AssetError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let words: Vec<&str> = s.split(':').collect();
@@ -67,25 +69,25 @@ impl FromStr for AssetInfoUnchecked {
         match words[0] {
             "native" => {
                 if words.len() != 2 {
-                    return Err(StdError::generic_err(format!(
-                        "invalid asset info format `{}`; must be in format `native:{{denom}}`",
-                        s
-                    )));
+                    return Err(AssetError::InvalidAssetInfoFormat {
+                        received: s.into(),
+                        should_be: format!("native:{{denom}}"),
+                    });
                 }
                 Ok(AssetInfoUnchecked::Native(String::from(words[1])))
             },
             "cw20" => {
                 if words.len() != 2 {
-                    return Err(StdError::generic_err(
-                        format!("invalid asset info format `{}`; must be in format `cw20:{{contract_addr}}`", s)
-                    ));
+                    return Err(AssetError::InvalidAssetInfoFormat {
+                        received: s.into(),
+                        should_be: format!("cw20:{{contract_addr}}"),
+                    });
                 }
                 Ok(AssetInfoUnchecked::Cw20(String::from(words[1])))
             },
-            ty => Err(StdError::generic_err(format!(
-                "invalid asset type `{}`; must be `native` or `cw20` or `cw1155`",
-                ty
-            ))),
+            ty => Err(AssetError::InvalidAssetType {
+                ty: ty.into(),
+            }),
         }
     }
 }
@@ -131,24 +133,23 @@ impl AssetInfoUnchecked {
         &self,
         api: &dyn Api,
         optional_whitelist: Option<&[&str]>,
-    ) -> StdResult<AssetInfo> {
-        Ok(match self {
+    ) -> Result<AssetInfo, AssetError> {
+        match self {
             AssetInfoUnchecked::Native(denom) => {
                 if let Some(whitelist) = optional_whitelist {
                     if !whitelist.contains(&&denom[..]) {
-                        return Err(StdError::generic_err(format!(
-                            "invalid denom {}; must be {}",
-                            denom,
-                            whitelist.join("|")
-                        )));
+                        return Err(AssetError::UnacceptedDenom {
+                            denom: denom.clone(),
+                            whitelist: whitelist.join("|"),
+                        });
                     }
                 }
-                AssetInfo::Native(denom.clone())
+                Ok(AssetInfo::Native(denom.clone()))
             },
             AssetInfoUnchecked::Cw20(contract_addr) => {
-                AssetInfo::Cw20(api.addr_validate(contract_addr)?)
+                Ok(AssetInfo::Cw20(api.addr_validate(contract_addr)?))
             },
-        })
+        }
     }
 }
 
@@ -201,31 +202,31 @@ impl AssetInfo {
     }
 
     /// Implemented as private function to prevent from_str from being called on AssetInfo
-    fn from_str(s: &str) -> Result<Self, StdError> {
+    fn from_str(s: &str) -> Result<Self, AssetError> {
         let words: Vec<&str> = s.split(':').collect();
 
         match words[0] {
             "native" => {
                 if words.len() != 2 {
-                    return Err(StdError::generic_err(format!(
-                        "invalid asset info format `{}`; must be in format `native:{{denom}}`",
-                        s
-                    )));
+                    return Err(AssetError::InvalidAssetInfoFormat {
+                        received: s.into(),
+                        should_be: format!("native:{{denom}}"),
+                    });
                 }
                 Ok(AssetInfo::Native(String::from(words[1])))
             },
             "cw20" => {
                 if words.len() != 2 {
-                    return Err(StdError::generic_err(
-                        format!("invalid asset info format `{}`; must be in format `cw20:{{contract_addr}}`", s)
-                    ));
+                    return Err(AssetError::InvalidAssetInfoFormat {
+                        received: s.into(),
+                        should_be: format!("cw20:{{contract_addr}}"),
+                    });
                 }
                 Ok(AssetInfo::Cw20(Addr::unchecked(words[1])))
             },
-            ty => Err(StdError::generic_err(format!(
-                "invalid asset type `{}`; must be `native` or `cw20` or `cw1155`",
-                ty
-            ))),
+            ty => Err(AssetError::InvalidAssetType {
+                ty: ty.into(),
+            }),
         }
     }
 }
@@ -260,7 +261,13 @@ impl KeyDeserialize for AssetInfo {
         // ignore length prefix
         // we're allowed to do this because we set the key's namespace ourselves in PrimaryKey (first key)
         value.drain(0..2);
-        AssetInfo::from_str(&String::from_utf8(value)?)
+
+        // parse the bytes into an utf8 string
+        let s = String::from_utf8(value)?;
+
+        // cast the AssetError to StdError::ParseError
+        AssetInfo::from_str(&s)
+            .map_err(|err| StdError::parse_err(type_name::<Self::Output>(), err))
     }
 }
 
@@ -308,25 +315,26 @@ mod test {
         let s = "";
         assert_eq!(
             AssetInfoUnchecked::from_str(s),
-            Err(StdError::generic_err(
-                "invalid asset type ``; must be `native` or `cw20` or `cw1155`"
-            )),
+            Err(AssetError::InvalidAssetType {
+                ty: "".into()
+            }),
         );
 
         let s = "native:uusd:12345";
         assert_eq!(
             AssetInfoUnchecked::from_str(s),
-            Err(StdError::generic_err(
-                "invalid asset info format `native:uusd:12345`; must be in format `native:{denom}`"
-            )),
+            Err(AssetError::InvalidAssetInfoFormat {
+                received: s.into(),
+                should_be: "native:{denom}".into(),
+            }),
         );
 
         let s = "cw721:galactic_punk";
         assert_eq!(
             AssetInfoUnchecked::from_str(s),
-            Err(StdError::generic_err(
-                "invalid asset type `cw721`; must be `native` or `cw20` or `cw1155`"
-            )),
+            Err(AssetError::InvalidAssetType {
+                ty: "cw721".into(),
+            })
         );
 
         let s = "native:uusd";
@@ -363,7 +371,10 @@ mod test {
         let unchecked = AssetInfoUnchecked::native("uatom");
         assert_eq!(
             unchecked.check(&api, Some(&["uusd", "uluna", "uosmo"])),
-            Err(StdError::generic_err("invalid denom uatom; must be uusd|uluna|uosmo")),
+            Err(AssetError::UnacceptedDenom {
+                denom: "uatom".into(),
+                whitelist: "uusd|uluna|uosmo".into(),
+            }),
         );
     }
 
@@ -374,7 +385,7 @@ mod test {
         let unchecked = AssetInfoUnchecked::cw20("TERRA1234ABCD");
         assert_eq!(
             unchecked.check(&api, None).unwrap_err(),
-            StdError::generic_err("Invalid input: address not normalized"),
+            StdError::generic_err("Invalid input: address not normalized").into(),
         );
     }
 

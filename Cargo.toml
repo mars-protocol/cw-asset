@@ -13,6 +13,7 @@ cosmwasm-std    = "1.2"
 cw20            = "1.0"
 cw-address-like = "1"
 cw-storage-plus = "1.0"
+thiserror       = "1"
 
 [dev-dependencies]
 serde = { version = "1.0", default-features = false, features = ["derive"] }

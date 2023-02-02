@@ -7,7 +7,7 @@ use cosmwasm_std::{
 use cw20::Cw20ExecuteMsg;
 use cw_address_like::AddressLike;
 
-use crate::{AssetInfo, AssetInfoBase, AssetInfoUnchecked};
+use crate::{AssetInfo, AssetInfoBase, AssetInfoUnchecked, AssetError};
 
 /// Represents a fungible asset with a known amount
 ///
@@ -85,7 +85,7 @@ pub type AssetUnchecked = AssetBase<String>;
 pub type Asset = AssetBase<Addr>;
 
 impl FromStr for AssetUnchecked {
-    type Err = StdError;
+    type Err = AssetError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let words: Vec<&str> = s.split(':').collect();
@@ -93,33 +93,24 @@ impl FromStr for AssetUnchecked {
         let info = match words[0] {
             "native" | "cw20" => {
                 if words.len() != 3 {
-                    return Err(StdError::generic_err(
-                        format!("invalid asset format `{}`; must be in format `native:{{denom}}:{{amount}}` or `cw20:{{contract_addr}}:{{amount}}`", s)
-                    ));
+                    return Err(AssetError::InvalidAssetFormat {
+                        received: s.into(),
+                    })
                 }
                 AssetInfoUnchecked::from_str(&format!("{}:{}", words[0], words[1]))?
             },
-            "cw1155" => {
-                if words.len() != 4 {
-                    return Err(StdError::generic_err(
-                        format!("invalid asset format `{}`; must be in format `cw1155:{{contract_addr}}:{{token_id}}:{{amount}}`", s)
-                    ));
-                }
-                AssetInfoUnchecked::from_str(&format!("{}:{}:{}", words[0], words[1], words[2]))?
-            },
             ty => {
-                return Err(StdError::generic_err(format!(
-                    "invalid asset type `{}`; must be `native` or `cw20` or `cw1155`",
-                    ty
-                )));
+                return Err(AssetError::InvalidAssetType {
+                    ty: ty.into(),
+                });
             },
         };
 
-        let amount = Uint128::from_str(words[words.len() - 1]).map_err(|_| {
-            StdError::generic_err(format!(
-                "invalid asset amount `{}`; must be a 128-bit unsigned integer",
-                words[words.len() - 1]
-            ))
+        let amount_str = words[words.len() - 1];
+        let amount = Uint128::from_str(amount_str).map_err(|_| {
+            AssetError::InvalidAssetAmount {
+                amount: amount_str.into(),
+            }
         })?;
 
         Ok(AssetUnchecked {
@@ -150,16 +141,18 @@ impl AssetUnchecked {
     /// only contain numerical characters, we simply consider the first non-numerical character and
     /// all that comes after as the denom, while all that comes before it as the amount. This is the
     /// approach used in the [Steak Hub contract](https://github.com/st4k3h0us3/steak-contracts/blob/v1.0.0/contracts/hub/src/helpers.rs#L48-L68).
-    pub fn from_sdk_string(s: &str) -> StdResult<Self> {
+    pub fn from_sdk_string(s: &str) -> Result<Self, AssetError> {
         for (i, c) in s.chars().enumerate() {
-            if c.is_alphabetic() {
+            if !c.is_ascii_digit() {
                 let amount = Uint128::from_str(&s[..i])?;
                 let denom = &s[i..];
                 return Ok(Self::native(denom, amount));
             }
         }
 
-        Err(StdError::generic_err(format!("failed to parse sdk coin string `{}`", s)))
+        Err(AssetError::InvalidSdkCoin {
+            coin_str: s.into(),
+        })
     }
 
     /// Validate data contained in an _unchecked_ **asset** instnace, return a new _checked_
@@ -179,7 +172,7 @@ impl AssetUnchecked {
     ///     }
     /// }
     /// ```
-    pub fn check(&self, api: &dyn Api, optional_whitelist: Option<&[&str]>) -> StdResult<Asset> {
+    pub fn check(&self, api: &dyn Api, optional_whitelist: Option<&[&str]>) -> Result<Asset, AssetError> {
         Ok(Asset {
             info: self.info.check(api, optional_whitelist)?,
             amount: self.amount,
@@ -471,31 +464,33 @@ mod tests {
         let s = "";
         assert_eq!(
             AssetUnchecked::from_str(s),
-            Err(StdError::generic_err(
-                "invalid asset type ``; must be `native` or `cw20` or `cw1155`"
-            )),
+            Err(AssetError::InvalidAssetType {
+                ty: "".into(),
+            }),
         );
 
         let s = "native:uusd:12345:67890";
         assert_eq!(
             AssetUnchecked::from_str(s),
-            Err(StdError::generic_err("invalid asset format `native:uusd:12345:67890`; must be in format `native:{denom}:{amount}` or `cw20:{contract_addr}:{amount}`")),
+            Err(AssetError::InvalidAssetFormat {
+                received: s.into(),
+            }),
         );
 
         let s = "cw721:galactic_punk:1";
         assert_eq!(
             AssetUnchecked::from_str(s),
-            Err(StdError::generic_err(
-                "invalid asset type `cw721`; must be `native` or `cw20` or `cw1155`"
-            )),
+            Err(AssetError::InvalidAssetType {
+                ty: "cw721".into(),
+            }),
         );
 
         let s = "native:uusd:ngmi";
         assert_eq!(
             AssetUnchecked::from_str(s),
-            Err(StdError::generic_err(
-                "invalid asset amount `ngmi`; must be a 128-bit unsigned integer"
-            )),
+            Err(AssetError::InvalidAssetAmount {
+                amount: "ngmi".into(),
+            }),
         );
 
         let s = "native:uusd:12345";
@@ -565,7 +560,10 @@ mod tests {
         let unchecked = AssetUnchecked::new(AssetInfoUnchecked::native("uatom"), 12345u128);
         assert_eq!(
             unchecked.check(&api, Some(&["uusd", "uluna", "uosmo"])),
-            Err(StdError::generic_err("invalid denom uatom; must be uusd|uluna|uosmo")),
+            Err(AssetError::UnacceptedDenom {
+                denom: "uatom".into(),
+                whitelist: "uusd|uluna|uosmo".into(),
+            })
         );
     }
 
@@ -576,7 +574,7 @@ mod tests {
         let unchecked = AssetUnchecked::cw20("TERRA1234ABCD", 12345u128);
         assert_eq!(
             unchecked.check(&api, None).unwrap_err(),
-            StdError::generic_err("Invalid input: address not normalized"),
+            StdError::generic_err("Invalid input: address not normalized").into(),
         );
     }
 
