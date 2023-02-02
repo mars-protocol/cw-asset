@@ -1,3 +1,9 @@
-target
+# rust
+target/
 
+# editors
+.idea/
+.vscode/
+
+# macos
 .DS_Store
