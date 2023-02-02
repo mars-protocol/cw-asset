@@ -8,7 +8,7 @@ use cosmwasm_std::{
 };
 use cw1155::{BalanceResponse as Cw1155BalanceResponse, Cw1155QueryMsg};
 use cw20::{BalanceResponse as Cw20BalanceResponse, Cw20QueryMsg};
-use cw_storage_plus::{PrimaryKey, Key, KeyDeserialize};
+use cw_storage_plus::{PrimaryKey, Key, KeyDeserialize, Prefixer};
 
 /// Represents the type of an fungible asset
 ///
@@ -311,8 +311,17 @@ impl KeyDeserialize for AssetInfo {
     type Output = Self;
 
     #[inline(always)]
-    fn from_vec(value: Vec<u8>) -> StdResult<Self::Output> {
+    fn from_vec(mut value: Vec<u8>) -> StdResult<Self::Output> {
+        // ignore length prefix
+        // we're allowed to do this because we set the key's namespace ourselves in PrimaryKey (first key)
+        value.drain(0..2);
         AssetInfo::from_str(&String::from_utf8(value)?)
+    }
+}
+
+impl<'a> Prefixer<'a> for AssetInfo {
+    fn prefix(&self) -> Vec<Key> {
+        self.key()
     }
 }
 
@@ -457,5 +466,83 @@ mod test {
         let info2 = AssetInfo::cw20(Addr::unchecked("mock_token"));
         let balance2 = info2.query_balance(&deps.as_ref().querier, "bob").unwrap();
         assert_eq!(balance2, Uint128::new(67890));
+    }
+
+    use cosmwasm_std::{Addr, Order};
+    use cw_storage_plus::Map;
+
+    fn mock_key() -> AssetInfo {
+        AssetInfo::native("uusd")
+    }
+
+    fn mock_keys() -> (AssetInfo, AssetInfo, AssetInfo) {
+        (
+            AssetInfo::native("uusd"),
+            AssetInfo::cw20(Addr::unchecked("mock_token")),
+            AssetInfo::cw20(Addr::unchecked("mock_token2")),
+        )
+    }
+
+    #[test]
+    fn storage_key_works() {
+        let mut deps = mock_dependencies();
+        let key = mock_key();
+        let map: Map<AssetInfo, u64> = Map::new("map");
+
+        map.save(deps.as_mut().storage, key.clone(), &42069).unwrap();
+
+        assert_eq!(map.load(deps.as_ref().storage, key.clone()).unwrap(), 42069);
+
+        let items = map
+            .range(deps.as_ref().storage, None, None, Order::Ascending)
+            .map(|item| item.unwrap())
+            .collect::<Vec<_>>();
+
+        assert_eq!(items.len(), 1);
+        assert_eq!(items[0], (key, 42069));
+    }
+
+    #[test]
+    fn composite_key_works() {
+        let mut deps = mock_dependencies();
+        let key = mock_key();
+        let map: Map<(AssetInfo, Addr), u64> = Map::new("map");
+
+        map.save(deps.as_mut().storage, (key.clone(), Addr::unchecked("larry")), &42069).unwrap();
+
+        map.save(deps.as_mut().storage, (key.clone(), Addr::unchecked("jake")), &69420).unwrap();
+
+        let items = map
+            .prefix(key)
+            .range(deps.as_ref().storage, None, None, Order::Ascending)
+            .map(|item| item.unwrap())
+            .collect::<Vec<_>>();
+
+        assert_eq!(items.len(), 2);
+        assert_eq!(items[0], (Addr::unchecked("jake"), 69420));
+        assert_eq!(items[1], (Addr::unchecked("larry"), 42069));
+    }
+
+    #[test]
+    fn triple_asset_key_works() {
+        let mut deps = mock_dependencies();
+        let map: Map<(AssetInfo, AssetInfo, AssetInfo), u64> = Map::new("map");
+
+        let (key1, key2, key3) = mock_keys();
+        map.save(deps.as_mut().storage, (key1.clone(), key2.clone(), key3.clone()), &42069).unwrap();
+        map.save(deps.as_mut().storage, (key1.clone(), key1.clone(), key2.clone()), &11).unwrap();
+        map.save(deps.as_mut().storage, (key1.clone(), key1.clone(), key3.clone()), &69420).unwrap();
+
+        let items = map
+            .prefix((key1.clone(),key1.clone()))
+            .range(deps.as_ref().storage, None, None, Order::Ascending)
+            .map(|item| item.unwrap())
+            .collect::<Vec<_>>();
+        assert_eq!(items.len(), 2);
+        assert_eq!(items[1], (key3.clone(), 69420));
+        assert_eq!(items[0], (key2.clone(), 11));
+
+        let val1 = map.load(deps.as_ref().storage, (key1.clone(), key2.clone(), key3.clone())).unwrap();
+        assert_eq!(val1, 42069);
     }
 }
