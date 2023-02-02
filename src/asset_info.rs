@@ -232,7 +232,7 @@ impl AssetInfo {
     }
 }
 
-impl<'a> PrimaryKey<'a> for AssetInfo {
+impl<'a> PrimaryKey<'a> for &AssetInfo {
     type Prefix = ();
     type SubPrefix = ();
     type Suffix = Self;
@@ -254,8 +254,8 @@ impl<'a> PrimaryKey<'a> for AssetInfo {
     }
 }
 
-impl KeyDeserialize for AssetInfo {
-    type Output = Self;
+impl KeyDeserialize for &AssetInfo {
+    type Output = AssetInfo;
 
     #[inline(always)]
     fn from_vec(mut value: Vec<u8>) -> StdResult<Self::Output> {
@@ -273,7 +273,7 @@ impl KeyDeserialize for AssetInfo {
     }
 }
 
-impl<'a> Prefixer<'a> for AssetInfo {
+impl<'a> Prefixer<'a> for &AssetInfo {
     fn prefix(&self) -> Vec<Key> {
         self.key()
     }
@@ -425,11 +425,11 @@ mod test {
     fn storage_key_works() {
         let mut deps = mock_dependencies();
         let key = mock_key();
-        let map: Map<AssetInfo, u64> = Map::new("map");
+        let map: Map<&AssetInfo, u64> = Map::new("map");
 
-        map.save(deps.as_mut().storage, key.clone(), &42069).unwrap();
+        map.save(deps.as_mut().storage, &key, &42069).unwrap();
 
-        assert_eq!(map.load(deps.as_ref().storage, key.clone()).unwrap(), 42069);
+        assert_eq!(map.load(deps.as_ref().storage, &key).unwrap(), 42069);
 
         let items = map
             .range(deps.as_ref().storage, None, None, Order::Ascending)
@@ -444,14 +444,14 @@ mod test {
     fn composite_key_works() {
         let mut deps = mock_dependencies();
         let key = mock_key();
-        let map: Map<(AssetInfo, Addr), u64> = Map::new("map");
+        let map: Map<(&AssetInfo, Addr), u64> = Map::new("map");
 
-        map.save(deps.as_mut().storage, (key.clone(), Addr::unchecked("larry")), &42069).unwrap();
+        map.save(deps.as_mut().storage, (&key, Addr::unchecked("larry")), &42069).unwrap();
 
-        map.save(deps.as_mut().storage, (key.clone(), Addr::unchecked("jake")), &69420).unwrap();
+        map.save(deps.as_mut().storage, (&key, Addr::unchecked("jake")), &69420).unwrap();
 
         let items = map
-            .prefix(key)
+            .prefix(&key)
             .range(deps.as_ref().storage, None, None, Order::Ascending)
             .map(|item| item.unwrap())
             .collect::<Vec<_>>();
@@ -464,18 +464,15 @@ mod test {
     #[test]
     fn triple_asset_key_works() {
         let mut deps = mock_dependencies();
-        let map: Map<(AssetInfo, AssetInfo, AssetInfo), u64> = Map::new("map");
+        let map: Map<(&AssetInfo, &AssetInfo, &AssetInfo), u64> = Map::new("map");
 
         let (key1, key2, key3) = mock_keys();
-        map.save(deps.as_mut().storage, (key1.clone(), key2.clone(), key3.clone()), &42069)
-            .unwrap();
-        map.save(deps.as_mut().storage, (key1.clone(), key1.clone(), key2.clone()), &11)
-            .unwrap();
-        map.save(deps.as_mut().storage, (key1.clone(), key1.clone(), key3.clone()), &69420)
-            .unwrap();
+        map.save(deps.as_mut().storage, (&key1, &key2, &key3), &42069).unwrap();
+        map.save(deps.as_mut().storage, (&key1, &key1, &key2), &11).unwrap();
+        map.save(deps.as_mut().storage, (&key1, &key1, &key3), &69420).unwrap();
 
         let items = map
-            .prefix((key1.clone(), key1.clone()))
+            .prefix((&key1, &key1))
             .range(deps.as_ref().storage, None, None, Order::Ascending)
             .map(|item| item.unwrap())
             .collect::<Vec<_>>();
@@ -483,7 +480,7 @@ mod test {
         assert_eq!(items[1], (key3.clone(), 69420));
         assert_eq!(items[0], (key2.clone(), 11));
 
-        let val1 = map.load(deps.as_ref().storage, (key1, key2, key3)).unwrap();
+        let val1 = map.load(deps.as_ref().storage, (&key1, &key2, &key3)).unwrap();
         assert_eq!(val1, 42069);
     }
 }
