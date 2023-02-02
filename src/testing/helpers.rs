@@ -1,7 +1,9 @@
 use std::marker::PhantomData;
 
-use cosmwasm_std::testing::{MockApi, MockStorage};
-use cosmwasm_std::OwnedDeps;
+use cosmwasm_std::{
+    testing::{MockApi, MockStorage},
+    OwnedDeps,
+};
 
 use super::custom_mock_querier::CustomMockQuerier;
 

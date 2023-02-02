@@ -1,5 +1,4 @@
-use std::fmt;
-use std::str::FromStr;
+use std::{fmt, str::FromStr};
 
 use cosmwasm_schema::cw_serde;
 use cosmwasm_std::{
@@ -8,7 +7,7 @@ use cosmwasm_std::{
 };
 use cw1155::{BalanceResponse as Cw1155BalanceResponse, Cw1155QueryMsg};
 use cw20::{BalanceResponse as Cw20BalanceResponse, Cw20QueryMsg};
-use cw_storage_plus::{PrimaryKey, Key, KeyDeserialize, Prefixer};
+use cw_storage_plus::{Key, KeyDeserialize, Prefixer, PrimaryKey};
 
 /// Represents the type of an fungible asset
 ///
@@ -81,12 +80,13 @@ impl FromStr for AssetInfoUnchecked {
         match words[0] {
             "native" => {
                 if words.len() != 2 {
-                    return Err(StdError::generic_err(
-                        format!("invalid asset info format `{}`; must be in format `native:{{denom}}`", s)
-                    ));
+                    return Err(StdError::generic_err(format!(
+                        "invalid asset info format `{}`; must be in format `native:{{denom}}`",
+                        s
+                    )));
                 }
                 Ok(AssetInfoUnchecked::Native(String::from(words[1])))
-            }
+            },
             "cw20" => {
                 if words.len() != 2 {
                     return Err(StdError::generic_err(
@@ -94,7 +94,7 @@ impl FromStr for AssetInfoUnchecked {
                     ));
                 }
                 Ok(AssetInfoUnchecked::Cw20(String::from(words[1])))
-            }
+            },
             "cw1155" => {
                 if words.len() != 3 {
                     return Err(StdError::generic_err(
@@ -102,10 +102,11 @@ impl FromStr for AssetInfoUnchecked {
                     ));
                 }
                 Ok(AssetInfoUnchecked::Cw1155(String::from(words[1]), String::from(words[2])))
-            }
-            ty => Err(StdError::generic_err(
-                format!("invalid asset type `{}`; must be `native` or `cw20` or `cw1155`", ty)
-            )),
+            },
+            ty => Err(StdError::generic_err(format!(
+                "invalid asset type `{}`; must be `native` or `cw20` or `cw1155`",
+                ty
+            ))),
         }
     }
 }
@@ -117,7 +118,7 @@ impl From<AssetInfo> for AssetInfoUnchecked {
             AssetInfo::Native(denom) => AssetInfoUnchecked::Native(denom),
             AssetInfo::Cw1155(contract_addr, token_id) => {
                 AssetInfoUnchecked::Cw1155(contract_addr.into(), token_id)
-            }
+            },
         }
     }
 }
@@ -129,7 +130,7 @@ impl From<&AssetInfo> for AssetInfoUnchecked {
             AssetInfo::Native(denom) => AssetInfoUnchecked::Native(denom.into()),
             AssetInfo::Cw1155(contract_addr, token_id) => {
                 AssetInfoUnchecked::Cw1155(contract_addr.into(), token_id.into())
-            }
+            },
         }
     }
 }
@@ -162,9 +163,11 @@ impl AssetInfoUnchecked {
             AssetInfoUnchecked::Native(denom) => {
                 if let Some(whitelist) = optional_whitelist {
                     if !whitelist.contains(&&denom[..]) {
-                        return Err(StdError::generic_err(
-                            format!("invalid denom {}; must be {}", denom, whitelist.join("|"))
-                        ));
+                        return Err(StdError::generic_err(format!(
+                            "invalid denom {}; must be {}",
+                            denom,
+                            whitelist.join("|")
+                        )));
                     }
                 }
                 AssetInfo::Native(denom.clone())
@@ -187,7 +190,9 @@ impl fmt::Display for AssetInfo {
         match self {
             AssetInfo::Cw20(contract_addr) => write!(f, "cw20:{}", contract_addr),
             AssetInfo::Native(denom) => write!(f, "native:{}", denom),
-            AssetInfo::Cw1155(contract_addr, token_id) => write!(f, "cw1155:{}:{}", contract_addr, token_id),
+            AssetInfo::Cw1155(contract_addr, token_id) => {
+                write!(f, "cw1155:{}:{}", contract_addr, token_id)
+            },
         }
     }
 }
@@ -249,12 +254,13 @@ impl AssetInfo {
         match words[0] {
             "native" => {
                 if words.len() != 2 {
-                    return Err(StdError::generic_err(
-                        format!("invalid asset info format `{}`; must be in format `native:{{denom}}`", s)
-                    ));
+                    return Err(StdError::generic_err(format!(
+                        "invalid asset info format `{}`; must be in format `native:{{denom}}`",
+                        s
+                    )));
                 }
                 Ok(AssetInfo::Native(String::from(words[1])))
-            }
+            },
             "cw20" => {
                 if words.len() != 2 {
                     return Err(StdError::generic_err(
@@ -262,7 +268,7 @@ impl AssetInfo {
                     ));
                 }
                 Ok(AssetInfo::Cw20(Addr::unchecked(words[1])))
-            }
+            },
             "cw1155" => {
                 if words.len() != 3 {
                     return Err(StdError::generic_err(
@@ -270,14 +276,14 @@ impl AssetInfo {
                     ));
                 }
                 Ok(AssetInfo::Cw1155(Addr::unchecked(words[1]), String::from(words[2])))
-            }
-            ty => Err(StdError::generic_err(
-                format!("invalid asset type `{}`; must be `native` or `cw20` or `cw1155`", ty)
-            )),
+            },
+            ty => Err(StdError::generic_err(format!(
+                "invalid asset type `{}`; must be `native` or `cw20` or `cw1155`",
+                ty
+            ))),
         }
     }
 }
-
 
 impl<'a> PrimaryKey<'a> for AssetInfo {
     type Prefix = ();
@@ -295,13 +301,13 @@ impl<'a> PrimaryKey<'a> for AssetInfo {
             AssetInfo::Native(denom) => {
                 keys.extend("native:".key());
                 keys.extend(denom.key());
-            }
-            AssetInfo::Cw1155(addr,id ) => {
+            },
+            AssetInfo::Cw1155(addr, id) => {
                 keys.extend("cw1155:".key());
                 keys.extend(addr.key());
                 keys.extend(":".key());
                 keys.extend(id.key());
-            }
+            },
         };
         keys
     }
@@ -331,10 +337,9 @@ impl<'a> Prefixer<'a> for AssetInfo {
 
 #[cfg(test)]
 mod test {
-    use super::super::testing::mock_dependencies;
-    use super::*;
-    use cosmwasm_std::testing::MockApi;
-    use cosmwasm_std::Coin;
+    use cosmwasm_std::{testing::MockApi, Coin};
+
+    use super::{super::testing::mock_dependencies, *};
 
     #[test]
     fn creating_instances() {
@@ -374,19 +379,25 @@ mod test {
         let s = "";
         assert_eq!(
             AssetInfoUnchecked::from_str(s),
-            Err(StdError::generic_err("invalid asset type ``; must be `native` or `cw20` or `cw1155`")),
+            Err(StdError::generic_err(
+                "invalid asset type ``; must be `native` or `cw20` or `cw1155`"
+            )),
         );
 
         let s = "native:uusd:12345";
         assert_eq!(
             AssetInfoUnchecked::from_str(s),
-            Err(StdError::generic_err("invalid asset info format `native:uusd:12345`; must be in format `native:{denom}`")),
+            Err(StdError::generic_err(
+                "invalid asset info format `native:uusd:12345`; must be in format `native:{denom}`"
+            )),
         );
 
         let s = "cw721:galactic_punk";
         assert_eq!(
             AssetInfoUnchecked::from_str(s),
-            Err(StdError::generic_err("invalid asset type `cw721`; must be `native` or `cw20` or `cw1155`")),
+            Err(StdError::generic_err(
+                "invalid asset type `cw721`; must be `native` or `cw20` or `cw1155`"
+            )),
         );
 
         let s = "native:uusd";
@@ -529,12 +540,14 @@ mod test {
         let map: Map<(AssetInfo, AssetInfo, AssetInfo), u64> = Map::new("map");
 
         let (key1, key2, key3) = mock_keys();
-        map.save(deps.as_mut().storage, (key1.clone(), key2.clone(), key3.clone()), &42069).unwrap();
+        map.save(deps.as_mut().storage, (key1.clone(), key2.clone(), key3.clone()), &42069)
+            .unwrap();
         map.save(deps.as_mut().storage, (key1.clone(), key1.clone(), key2.clone()), &11).unwrap();
-        map.save(deps.as_mut().storage, (key1.clone(), key1.clone(), key3.clone()), &69420).unwrap();
+        map.save(deps.as_mut().storage, (key1.clone(), key1.clone(), key3.clone()), &69420)
+            .unwrap();
 
         let items = map
-            .prefix((key1.clone(),key1.clone()))
+            .prefix((key1.clone(), key1.clone()))
             .range(deps.as_ref().storage, None, None, Order::Ascending)
             .map(|item| item.unwrap())
             .collect::<Vec<_>>();
@@ -542,7 +555,8 @@ mod test {
         assert_eq!(items[1], (key3.clone(), 69420));
         assert_eq!(items[0], (key2.clone(), 11));
 
-        let val1 = map.load(deps.as_ref().storage, (key1.clone(), key2.clone(), key3.clone())).unwrap();
+        let val1 =
+            map.load(deps.as_ref().storage, (key1.clone(), key2.clone(), key3.clone())).unwrap();
         assert_eq!(val1, 42069);
     }
 }

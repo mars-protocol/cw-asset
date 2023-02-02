@@ -36,14 +36,12 @@
 //! fn transfer_multiple_assets(api: &dyn Api) -> StdResult<Response> {
 //!     let assets = AssetList::from(vec![
 //!         Asset::native("uusd", 12345u128),
-//!         Asset::cw20(api.addr_validate("token_addr")?, 67890u128)
+//!         Asset::cw20(api.addr_validate("token_addr")?, 67890u128),
 //!     ]);
 //!
 //!     let msgs = assets.transfer_msgs(api.addr_validate("recipient_addr")?)?;
 //!
-//!     Ok(Response::new()
-//!         .add_messages(msgs)
-//!         .add_attribute("assets_sent", assets.to_string()))
+//!     Ok(Response::new().add_messages(msgs).add_attribute("assets_sent", assets.to_string()))
 //! }
 //! ```
 //!
@@ -61,7 +59,7 @@
 //! pub enum ExecuteMsg {
 //!     Deposit {
 //!         asset: AssetUnchecked,
-//!     }
+//!     },
 //! }
 //! ```
 //!

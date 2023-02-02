@@ -1,6 +1,4 @@
-use std::convert::TryFrom;
-use std::fmt;
-use std::str::FromStr;
+use std::{convert::TryFrom, fmt, str::FromStr};
 
 use cosmwasm_schema::cw_serde;
 use cosmwasm_std::{
@@ -89,7 +87,8 @@ impl<T> AssetBase<T> {
     /// use cosmwasm_std::Addr;
     /// use cw_asset::Asset;
     ///
-    /// let asset = Asset::cw1155(Addr::unchecked("contract_mock"), String::from("mock_token"), 12345u128);
+    /// let asset =
+    ///     Asset::cw1155(Addr::unchecked("contract_mock"), String::from("mock_token"), 12345u128);
     /// ```
     pub fn cw1155<A: Into<T>, B: Into<String>, C: Into<Uint128>>(
         contract_addr: A,
@@ -132,19 +131,24 @@ impl FromStr for AssetUnchecked {
                 AssetInfoUnchecked::from_str(&format!("{}:{}:{}", words[0], words[1], words[2]))?
             },
             ty => {
-                return Err(StdError::generic_err(
-                    format!("invalid asset type `{}`; must be `native` or `cw20` or `cw1155`", ty)
-                ));
+                return Err(StdError::generic_err(format!(
+                    "invalid asset type `{}`; must be `native` or `cw20` or `cw1155`",
+                    ty
+                )));
             },
         };
 
-        let amount = Uint128::from_str(words[words.len() - 1]).map_err(
-            |_| StdError::generic_err(
-                format!("invalid asset amount `{}`; must be a 128-bit unsigned integer", words[words.len() - 1])
-            )
-        )?;
+        let amount = Uint128::from_str(words[words.len() - 1]).map_err(|_| {
+            StdError::generic_err(format!(
+                "invalid asset amount `{}`; must be a 128-bit unsigned integer",
+                words[words.len() - 1]
+            ))
+        })?;
 
-        Ok(AssetUnchecked { info, amount })
+        Ok(AssetUnchecked {
+            info,
+            amount,
+        })
     }
 }
 
@@ -194,7 +198,7 @@ impl AssetUnchecked {
     /// fn validate_asset(api: &dyn Api, asset_unchecked: &AssetUnchecked) {
     ///     match asset_unchecked.check(api, Some(&["uatom", "uluna"])) {
     ///         Ok(asset) => println!("asset is valid: {}", asset.to_string()),
-    ///         Err(err) => println!("asset is invalid! reason: {}", err)
+    ///         Err(err) => println!("asset is invalid! reason: {}", err),
     ///     }
     /// }
     /// ```
@@ -235,12 +239,14 @@ impl TryFrom<Asset> for Coin {
                 denom: denom.clone(),
                 amount: asset.amount,
             }),
-            AssetInfo::Cw20(_) => Err(StdError::generic_err(
-                format!("cannot cast asset {} into cosmwasm_std::Coin", asset)
-            )),
-            AssetInfo::Cw1155(..) => Err(StdError::generic_err(
-                format!("cannot cast asset {} into cosmwasm_std::Coin", asset)
-            )),
+            AssetInfo::Cw20(_) => Err(StdError::generic_err(format!(
+                "cannot cast asset {} into cosmwasm_std::Coin",
+                asset
+            ))),
+            AssetInfo::Cw1155(..) => Err(StdError::generic_err(format!(
+                "cannot cast asset {} into cosmwasm_std::Coin",
+                asset
+            ))),
         }
     }
 }
@@ -279,18 +285,20 @@ impl Asset {
     ///
     /// #[derive(Serialize)]
     /// enum MockReceiveMsg {
-    ///     MockCommand {}
+    ///     MockCommand {},
     /// }
     ///
     /// use cosmwasm_std::{to_binary, Addr, Response, StdResult};
     /// use cw_asset::Asset;
     ///
-    /// fn send_asset(asset: &Asset, contract_addr: &Addr, msg: &MockReceiveMsg) -> StdResult<Response> {
+    /// fn send_asset(
+    ///     asset: &Asset,
+    ///     contract_addr: &Addr,
+    ///     msg: &MockReceiveMsg,
+    /// ) -> StdResult<Response> {
     ///     let msg = asset.send_msg(contract_addr, to_binary(msg)?)?;
     ///
-    ///     Ok(Response::new()
-    ///         .add_message(msg)
-    ///         .add_attribute("asset_sent", asset.to_string()))
+    ///     Ok(Response::new().add_message(msg).add_attribute("asset_sent", asset.to_string()))
     /// }
     /// ```
     pub fn send_msg<A: Into<String>>(&self, to: A, msg: Binary) -> StdResult<CosmosMsg> {
@@ -322,9 +330,7 @@ impl Asset {
     /// fn transfer_asset(asset: &Asset, recipient_addr: &Addr) -> StdResult<Response> {
     ///     let msg = asset.transfer_msg(recipient_addr)?;
     ///
-    ///     Ok(Response::new()
-    ///         .add_message(msg)
-    ///         .add_attribute("asset_sent", asset.to_string()))
+    ///     Ok(Response::new().add_message(msg).add_attribute("asset_sent", asset.to_string()))
     /// }
     /// ```
     pub fn transfer_msg<A: Into<String>>(&self, to: A) -> StdResult<CosmosMsg> {
@@ -344,7 +350,9 @@ impl Asset {
                 })?,
                 funds: vec![],
             })),
-            AssetInfo::Cw1155(..) => Err(StdError::generic_err("cw1155 does not have `transfer` method. use `draw` instead")),
+            AssetInfo::Cw1155(..) => Err(StdError::generic_err(
+                "cw1155 does not have `transfer` method. use `draw` instead",
+            )),
         }
     }
 
@@ -361,9 +369,7 @@ impl Asset {
     /// fn draw_asset(asset: &Asset, user_addr: &Addr, contract_addr: &Addr) -> StdResult<Response> {
     ///     let msg = asset.transfer_from_msg(user_addr, contract_addr)?;
     ///
-    ///     Ok(Response::new()
-    ///         .add_message(msg)
-    ///         .add_attribute("asset_drawn", asset.to_string()))
+    ///     Ok(Response::new().add_message(msg).add_attribute("asset_drawn", asset.to_string()))
     /// }
     /// ```
     pub fn transfer_from_msg<A: Into<String>, B: Into<String>>(
@@ -392,7 +398,9 @@ impl Asset {
                 })?,
                 funds: vec![],
             })),
-            AssetInfo::Native(_) => Err(StdError::generic_err("native coins do not have `transfer_from` method")),
+            AssetInfo::Native(_) => {
+                Err(StdError::generic_err("native coins do not have `transfer_from` method"))
+            },
         }
     }
 }
@@ -403,10 +411,11 @@ impl Asset {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-    use crate::AssetInfoUnchecked;
     use cosmwasm_std::testing::MockApi;
     use serde::Serialize;
+
+    use super::*;
+    use crate::AssetInfoUnchecked;
 
     #[derive(Serialize)]
     enum MockExecuteMsg {
@@ -457,11 +466,15 @@ mod tests {
         let astro = Asset::cw20(Addr::unchecked("astro_token"), 69u128);
         assert_eq!(
             Coin::try_from(&astro),
-            Err(StdError::generic_err("cannot cast asset cw20:astro_token:69 into cosmwasm_std::Coin")),
+            Err(StdError::generic_err(
+                "cannot cast asset cw20:astro_token:69 into cosmwasm_std::Coin"
+            )),
         );
         assert_eq!(
             Coin::try_from(astro),
-            Err(StdError::generic_err("cannot cast asset cw20:astro_token:69 into cosmwasm_std::Coin")),
+            Err(StdError::generic_err(
+                "cannot cast asset cw20:astro_token:69 into cosmwasm_std::Coin"
+            )),
         );
     }
 
@@ -503,7 +516,9 @@ mod tests {
         let s = "";
         assert_eq!(
             AssetUnchecked::from_str(s),
-            Err(StdError::generic_err("invalid asset type ``; must be `native` or `cw20` or `cw1155`")),
+            Err(StdError::generic_err(
+                "invalid asset type ``; must be `native` or `cw20` or `cw1155`"
+            )),
         );
 
         let s = "native:uusd:12345:67890";
@@ -515,13 +530,17 @@ mod tests {
         let s = "cw721:galactic_punk:1";
         assert_eq!(
             AssetUnchecked::from_str(s),
-            Err(StdError::generic_err("invalid asset type `cw721`; must be `native` or `cw20` or `cw1155`")),
+            Err(StdError::generic_err(
+                "invalid asset type `cw721`; must be `native` or `cw20` or `cw1155`"
+            )),
         );
 
         let s = "native:uusd:ngmi";
         assert_eq!(
             AssetUnchecked::from_str(s),
-            Err(StdError::generic_err("invalid asset amount `ngmi`; must be a 128-bit unsigned integer")),
+            Err(StdError::generic_err(
+                "invalid asset amount `ngmi`; must be a 128-bit unsigned integer"
+            )),
         );
 
         let s = "native:uusd:12345";
@@ -545,11 +564,29 @@ mod tests {
         let asset = AssetUnchecked::from_sdk_string("12345uatom").unwrap();
         assert_eq!(asset, AssetUnchecked::native("uatom", 12345u128));
 
-        let asset = AssetUnchecked::from_sdk_string("69420ibc/27394FB092D2ECCD56123C74F36E4C1F926001CEADA9CA97EA622B25F41E5EB2").unwrap();
-        assert_eq!(asset, AssetUnchecked::native("ibc/27394FB092D2ECCD56123C74F36E4C1F926001CEADA9CA97EA622B25F41E5EB2", 69420u128));
+        let asset = AssetUnchecked::from_sdk_string(
+            "69420ibc/27394FB092D2ECCD56123C74F36E4C1F926001CEADA9CA97EA622B25F41E5EB2",
+        )
+        .unwrap();
+        assert_eq!(
+            asset,
+            AssetUnchecked::native(
+                "ibc/27394FB092D2ECCD56123C74F36E4C1F926001CEADA9CA97EA622B25F41E5EB2",
+                69420u128
+            )
+        );
 
-        let asset = AssetUnchecked::from_sdk_string("88888factory/osmo1z926ax906k0ycsuckele6x5hh66e2m4m6ry7dn").unwrap();
-        assert_eq!(asset, AssetUnchecked::native("factory/osmo1z926ax906k0ycsuckele6x5hh66e2m4m6ry7dn", 88888u128));
+        let asset = AssetUnchecked::from_sdk_string(
+            "88888factory/osmo1z926ax906k0ycsuckele6x5hh66e2m4m6ry7dn",
+        )
+        .unwrap();
+        assert_eq!(
+            asset,
+            AssetUnchecked::native(
+                "factory/osmo1z926ax906k0ycsuckele6x5hh66e2m4m6ry7dn",
+                88888u128
+            )
+        );
 
         let err = AssetUnchecked::from_sdk_string("ngmi");
         assert_eq!(err.is_err(), true);

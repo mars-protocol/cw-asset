@@ -1,6 +1,7 @@
+use std::collections::HashMap;
+
 use cosmwasm_std::{to_binary, Addr, QuerierResult, SystemError, Uint128};
 use cw20::{BalanceResponse, Cw20QueryMsg};
-use std::collections::HashMap;
 
 #[derive(Default)]
 pub struct Cw20Querier {
@@ -24,7 +25,7 @@ impl Cw20Querier {
                             request: Default::default(),
                         })
                         .into()
-                    }
+                    },
                 };
 
                 let balance = match contract_balances.get(&Addr::unchecked(&address)) {
@@ -35,7 +36,7 @@ impl Cw20Querier {
                             request: Default::default(),
                         })
                         .into()
-                    }
+                    },
                 };
 
                 Ok(to_binary(&BalanceResponse {
@@ -43,7 +44,7 @@ impl Cw20Querier {
                 })
                 .into())
                 .into()
-            }
+            },
 
             query => Err(SystemError::InvalidRequest {
                 error: format!("[mock]: unsupported cw20 query {:?}", query),

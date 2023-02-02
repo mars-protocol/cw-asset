@@ -1,7 +1,6 @@
-use cosmwasm_std::testing::MockQuerier;
 use cosmwasm_std::{
-    from_binary, from_slice, Addr, Coin, Empty, Querier, QuerierResult, QueryRequest, StdResult,
-    SystemError, WasmQuery,
+    from_binary, from_slice, testing::MockQuerier, Addr, Coin, Empty, Querier, QuerierResult,
+    QueryRequest, StdResult, SystemError, WasmQuery,
 };
 use cw20::Cw20QueryMsg;
 
@@ -31,7 +30,7 @@ impl Querier for CustomMockQuerier {
                     request: bin_request.into(),
                 })
                 .into()
-            }
+            },
         };
         self.handle_query(&request)
     }
@@ -52,7 +51,7 @@ impl CustomMockQuerier {
                 }
 
                 panic!("[mock]: unsupported wasm query {:?}", msg);
-            }
+            },
 
             _ => self.base.handle_query(request),
         }

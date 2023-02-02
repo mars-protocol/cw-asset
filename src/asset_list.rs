@@ -1,5 +1,4 @@
-use std::fmt;
-use std::str::FromStr;
+use std::{fmt, str::FromStr};
 
 use cosmwasm_schema::cw_serde;
 use cosmwasm_std::{Addr, Api, Coin, CosmosMsg, StdError, StdResult};
@@ -56,7 +55,7 @@ impl AssetListUnchecked {
     ///
     /// ```rust
     /// use cosmwasm_std::{Addr, Api, StdResult};
-    /// use cw_asset::{Asset, AssetList, AssetUnchecked, AssetListUnchecked};
+    /// use cw_asset::{Asset, AssetList, AssetListUnchecked, AssetUnchecked};
     ///
     /// fn validate_assets(api: &dyn Api, list_unchecked: &AssetListUnchecked) {
     ///     match list_unchecked.check(api, Some(&["uatom", "uluna"])) {
@@ -70,7 +69,8 @@ impl AssetListUnchecked {
         api: &dyn Api,
         optional_whitelist: Option<&[&str]>,
     ) -> StdResult<AssetList> {
-        let assets = self.0
+        let assets = self
+            .0
             .iter()
             .map(|asset| asset.check(api, optional_whitelist))
             .collect::<StdResult<Vec<Asset>>>()?;
@@ -159,7 +159,7 @@ impl AssetList {
     /// use cw_asset::AssetList;
     ///
     /// let list = AssetList::new();
-    /// let len = list.len();  // should be zero
+    /// let len = list.len(); // should be zero
     /// ```
     pub fn new() -> Self {
         AssetListBase::default()
@@ -191,8 +191,9 @@ impl AssetList {
     ///     Asset::native("uusd", 67890u128),
     /// ]);
     ///
-    /// let len = list.len();  // should be two
+    /// let len = list.len(); // should be two
     /// ```
+    ///
     // NOTE: I do have `is_empty` implemented, but clippy still throws a warning saying I don't have
     // it. Must be a clippy bug...
     #[allow(clippy::len_without_is_empty)]
@@ -205,9 +206,7 @@ impl AssetList {
     /// ```rust
     /// use cw_asset::{Asset, AssetList};
     ///
-    /// let mut list = AssetList::from(vec![
-    ///     Asset::native("uluna", 12345u128),
-    /// ]);
+    /// let mut list = AssetList::from(vec![Asset::native("uluna", 12345u128)]);
     /// let is_empty = list.is_empty(); // should be `false`
     ///
     /// list.deduct(&Asset::native("uluna", 12345u128)).unwrap();
@@ -249,10 +248,8 @@ impl AssetList {
     /// ```rust
     /// use cw_asset::{Asset, AssetInfo, AssetList};
     ///
-    /// let mut list = AssetList::from(vec![
-    ///     Asset::native("uluna", 12345u128),
-    ///     Asset::native("uusd", 67890u128),
-    /// ]);
+    /// let mut list =
+    ///     AssetList::from(vec![Asset::native("uluna", 12345u128), Asset::native("uusd", 67890u128)]);
     ///
     /// let list_halved = list.apply(|a| a.amount = a.amount.multiply_ratio(1u128, 2u128));
     /// ```
@@ -273,7 +270,7 @@ impl AssetList {
     /// let mut len = list.len(); // should be two
     ///
     /// list.purge();
-    /// len = list.len();  // should be one
+    /// len = list.len(); // should be one
     /// ```
     pub fn purge(&mut self) -> &mut Self {
         self.0.retain(|asset| !asset.amount.is_zero());
@@ -310,10 +307,10 @@ impl AssetList {
         match self.0.iter_mut().find(|asset| asset.info == asset_to_add.info) {
             Some(asset) => {
                 asset.amount = asset.amount.checked_add(asset_to_add.amount)?;
-            }
+            },
             None => {
                 self.0.push(asset_to_add.clone());
-            }
+            },
         }
         Ok(self.purge())
     }
@@ -379,12 +376,13 @@ impl AssetList {
         match self.0.iter_mut().find(|asset| asset.info == asset_to_deduct.info) {
             Some(asset) => {
                 asset.amount = asset.amount.checked_sub(asset_to_deduct.amount)?;
-            }
+            },
             None => {
-                return Err(StdError::generic_err(
-                    format!("not found in asset list: {}", asset_to_deduct.info)
-                ));
-            }
+                return Err(StdError::generic_err(format!(
+                    "not found in asset list: {}",
+                    asset_to_deduct.info
+                )));
+            },
         }
         Ok(self.purge())
     }
@@ -422,14 +420,12 @@ impl AssetList {
     ///
     /// ```rust
     /// use cosmwasm_std::{Addr, Response, StdResult};
-    /// use cw_asset::{AssetList};
+    /// use cw_asset::AssetList;
     ///
     /// fn transfer_assets(list: &AssetList, recipient_addr: &Addr) -> StdResult<Response> {
     ///     let msgs = list.transfer_msgs(recipient_addr)?;
     ///
-    ///     Ok(Response::new()
-    ///         .add_messages(msgs)
-    ///         .add_attribute("assets_sent", list.to_string()))
+    ///     Ok(Response::new().add_messages(msgs).add_attribute("assets_sent", list.to_string()))
     /// }
     /// ```
     pub fn transfer_msgs<A: Into<String> + Clone>(&self, to: A) -> StdResult<Vec<CosmosMsg>> {
@@ -446,8 +442,7 @@ impl AssetList {
 
 #[cfg(test)]
 mod test_helpers {
-    use super::super::asset::Asset;
-    use super::*;
+    use super::{super::asset::Asset, *};
 
     pub fn uluna() -> AssetInfo {
         AssetInfo::native("uluna")
@@ -471,15 +466,17 @@ mod test_helpers {
 
 #[cfg(test)]
 mod tests {
-    use super::super::asset::{Asset, AssetUnchecked};
-    use super::test_helpers::{mock_list, mock_token, uluna, uusd};
-    use super::*;
-    use cosmwasm_std::testing::MockApi;
     use cosmwasm_std::{
-        to_binary, BankMsg, Coin, CosmosMsg, Decimal, OverflowError, OverflowOperation, Uint128,
-        WasmMsg,
+        testing::MockApi, to_binary, BankMsg, Coin, CosmosMsg, Decimal, OverflowError,
+        OverflowOperation, Uint128, WasmMsg,
     };
     use cw20::Cw20ExecuteMsg;
+
+    use super::{
+        super::asset::{Asset, AssetUnchecked},
+        test_helpers::{mock_list, mock_token, uluna, uusd},
+        *,
+    };
 
     #[test]
     fn from_string() {
@@ -495,13 +492,17 @@ mod tests {
         let s = "native:uusd:69420,cw721:galactic_punk:1";
         assert_eq!(
             AssetListUnchecked::from_str(s),
-            Err(StdError::generic_err("invalid asset type `cw721`; must be `native` or `cw20` or `cw1155`")),
+            Err(StdError::generic_err(
+                "invalid asset type `cw721`; must be `native` or `cw20` or `cw1155`"
+            )),
         );
 
         let s = "native:uusd:69420,cw20:mock_token:ngmi";
         assert_eq!(
             AssetListUnchecked::from_str(s),
-            Err(StdError::generic_err("invalid asset amount `ngmi`; must be a 128-bit unsigned integer")),
+            Err(StdError::generic_err(
+                "invalid asset amount `ngmi`; must be a 128-bit unsigned integer"
+            )),
         );
 
         let s = "native:uusd:69420,cw20:mock_token:88888";
