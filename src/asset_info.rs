@@ -20,6 +20,7 @@ use crate::AssetError;
 /// - CW20 tokens. To create an **asset info** instance of this type, provide
 ///   the contract address.
 #[cw_serde]
+#[derive(Eq, PartialOrd, Ord, Hash)]
 #[non_exhaustive]
 pub enum AssetInfoBase<T: AddressLike> {
     Native(String),
@@ -59,6 +60,16 @@ pub type AssetInfoUnchecked = AssetInfoBase<String>;
 /// Represents an **asset info** instance containing only verified data; to be
 /// saved in contract storage.
 pub type AssetInfo = AssetInfoBase<Addr>;
+
+impl AssetInfo {
+    /// Return the `denom` or `addr` wrapped within [AssetInfo]
+    pub fn inner(&self) -> String {
+        match self {
+            AssetInfoBase::Native(denom) => denom.clone(),
+            AssetInfoBase::Cw20(addr) => addr.into(),
+        }
+    }
+}
 
 impl FromStr for AssetInfoUnchecked {
     type Err = AssetError;
@@ -233,9 +244,9 @@ impl AssetInfo {
 }
 
 impl<'a> PrimaryKey<'a> for &AssetInfo {
-    type Prefix = ();
+    type Prefix = String;
     type SubPrefix = ();
-    type Suffix = Self;
+    type Suffix = String;
     type SuperSuffix = Self;
 
     fn key(&self) -> Vec<Key> {
@@ -268,8 +279,7 @@ impl KeyDeserialize for &AssetInfo {
         let s = String::from_utf8(value)?;
 
         // cast the AssetError to StdError::ParseError
-        AssetInfo::from_str(&s)
-            .map_err(|err| StdError::parse_err(type_name::<Self::Output>(), err))
+        AssetInfo::from_str(&s).map_err(|err| StdError::parse_err(type_name::<Self::Output>(), err))
     }
 }
 
@@ -285,6 +295,8 @@ impl<'a> Prefixer<'a> for &AssetInfo {
 
 #[cfg(test)]
 mod test {
+    use std::collections::{BTreeMap, HashMap};
+
     use cosmwasm_std::{testing::MockApi, Coin};
 
     use super::{super::testing::mock_dependencies, *};
@@ -482,5 +494,90 @@ mod test {
 
         let val1 = map.load(deps.as_ref().storage, (&key1, &key2, &key3)).unwrap();
         assert_eq!(val1, 42069);
+    }
+
+    #[test]
+    fn hash_map_asset_info() {
+        let mut map: HashMap<AssetInfo, u64> = HashMap::new();
+
+        let asset_cw20 = AssetInfo::cw20(Addr::unchecked("cosmwasm1"));
+        let asset_native = AssetInfo::native(Addr::unchecked("native1"));
+        let asset_fake_native = AssetInfo::native(Addr::unchecked("cosmwasm1"));
+
+        map.insert(asset_cw20.clone(), 1);
+        map.insert(asset_native.clone(), 2);
+        map.insert(asset_fake_native.clone(), 3);
+
+        assert_eq!(&1, map.get(&asset_cw20).unwrap());
+        assert_eq!(&2, map.get(&asset_native).unwrap());
+        assert_eq!(&3, map.get(&asset_fake_native).unwrap());
+
+        let mut map: BTreeMap<AssetInfo, u64> = BTreeMap::new();
+
+        map.insert(asset_cw20.clone(), 1);
+        map.insert(asset_native.clone(), 2);
+        map.insert(asset_fake_native.clone(), 3);
+
+        assert_eq!(&1, map.get(&asset_cw20).unwrap());
+        assert_eq!(&2, map.get(&asset_native).unwrap());
+        assert_eq!(&3, map.get(&asset_fake_native).unwrap());
+    }
+
+    #[test]
+    fn inner() {
+        assert_eq!(AssetInfo::native("denom").inner(), "denom".to_string());
+        assert_eq!(AssetInfo::cw20(Addr::unchecked("addr")).inner(), "addr".to_string())
+    }
+
+    #[test]
+    fn prefix() {
+        let mut deps = mock_dependencies();
+        let map: Map<&AssetInfo, u64> = Map::new("map");
+
+        let asset_cw20_1 = AssetInfo::cw20(Addr::unchecked("cosmwasm1"));
+        let asset_cw20_2 = AssetInfo::cw20(Addr::unchecked("cosmwasm2"));
+        let asset_cw20_3 = AssetInfo::cw20(Addr::unchecked("cosmwasm3"));
+
+        let asset_native_1 = AssetInfo::native(Addr::unchecked("native1"));
+        let asset_native_2 = AssetInfo::native(Addr::unchecked("native2"));
+        let asset_native_3 = AssetInfo::native(Addr::unchecked("native3"));
+
+        map.save(deps.as_mut().storage, &asset_cw20_1, &1).unwrap();
+        map.save(deps.as_mut().storage, &asset_cw20_2, &2).unwrap();
+        map.save(deps.as_mut().storage, &asset_cw20_3, &3).unwrap();
+
+        map.save(deps.as_mut().storage, &asset_native_1, &10).unwrap();
+        map.save(deps.as_mut().storage, &asset_native_2, &20).unwrap();
+        map.save(deps.as_mut().storage, &asset_native_3, &30).unwrap();
+
+        let pre_cw20 = map
+            .prefix("cw20:".to_string())
+            .range(deps.as_ref().storage, None, None, Order::Ascending)
+            .collect::<StdResult<Vec<(String, u64)>>>()
+            .unwrap();
+
+        assert_eq!(
+            vec![
+                ("cosmwasm1".to_string(), 1),
+                ("cosmwasm2".to_string(), 2),
+                ("cosmwasm3".to_string(), 3)
+            ],
+            pre_cw20
+        );
+
+        let pre_native = map
+            .prefix("native:".to_string())
+            .range(deps.as_ref().storage, None, None, Order::Ascending)
+            .collect::<StdResult<Vec<(String, u64)>>>()
+            .unwrap();
+
+        assert_eq!(
+            vec![
+                ("native1".to_string(), 10),
+                ("native2".to_string(), 20),
+                ("native3".to_string(), 30)
+            ],
+            pre_native
+        );
     }
 }
