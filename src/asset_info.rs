@@ -419,7 +419,7 @@ mod test {
     }
 
     use cosmwasm_std::{Addr, Order};
-    use cw_storage_plus::Map;
+    use cw_storage_plus::{Bound, Map};
 
     fn mock_key() -> AssetInfo {
         AssetInfo::native("uusd")
@@ -497,7 +497,7 @@ mod test {
     }
 
     #[test]
-    fn hash_map_asset_info() {
+    fn std_maps_asset_info() {
         let mut map: HashMap<AssetInfo, u64> = HashMap::new();
 
         let asset_cw20 = AssetInfo::cw20(Addr::unchecked("cosmwasm1"));
@@ -543,14 +543,17 @@ mod test {
         let asset_native_3 = AssetInfo::native(Addr::unchecked("native3"));
 
         map.save(deps.as_mut().storage, &asset_cw20_1, &1).unwrap();
-        map.save(deps.as_mut().storage, &asset_cw20_2, &2).unwrap();
         map.save(deps.as_mut().storage, &asset_cw20_3, &3).unwrap();
+        map.save(deps.as_mut().storage, &asset_cw20_2, &2).unwrap();
 
-        map.save(deps.as_mut().storage, &asset_native_1, &10).unwrap();
         map.save(deps.as_mut().storage, &asset_native_2, &20).unwrap();
         map.save(deps.as_mut().storage, &asset_native_3, &30).unwrap();
+        map.save(deps.as_mut().storage, &asset_native_1, &10).unwrap();
 
-        let pre_cw20 = map
+        // --- Ascending ---
+
+        // no bound
+        let cw20_ascending = map
             .prefix("cw20:".to_string())
             .range(deps.as_ref().storage, None, None, Order::Ascending)
             .collect::<StdResult<Vec<(String, u64)>>>()
@@ -562,22 +565,67 @@ mod test {
                 ("cosmwasm2".to_string(), 2),
                 ("cosmwasm3".to_string(), 3)
             ],
-            pre_cw20
+            cw20_ascending
         );
 
-        let pre_native = map
+        // bound on min
+        let native_ascending = map
             .prefix("native:".to_string())
-            .range(deps.as_ref().storage, None, None, Order::Ascending)
+            .range(
+                deps.as_ref().storage,
+                Some(Bound::exclusive(asset_native_1.inner())),
+                None,
+                Order::Ascending,
+            )
             .collect::<StdResult<Vec<(String, u64)>>>()
             .unwrap();
 
         assert_eq!(
             vec![
-                ("native1".to_string(), 10),
+                // ("native1".to_string(), 10), - out of bound
                 ("native2".to_string(), 20),
                 ("native3".to_string(), 30)
             ],
-            pre_native
+            native_ascending
+        );
+
+        // --- Descending ---
+
+        // no bound
+        let cw20_descending = map
+            .prefix("cw20:".to_string())
+            .range(deps.as_ref().storage, None, None, Order::Descending)
+            .collect::<StdResult<Vec<(String, u64)>>>()
+            .unwrap();
+
+        assert_eq!(
+            vec![
+                ("cosmwasm3".to_string(), 3),
+                ("cosmwasm2".to_string(), 2),
+                ("cosmwasm1".to_string(), 1)
+            ],
+            cw20_descending
+        );
+
+        // bound on max
+        let native_descending = map
+            .prefix("native:".to_string())
+            .range(
+                deps.as_ref().storage,
+                None,
+                Some(Bound::exclusive(asset_native_3.inner())),
+                Order::Descending,
+            )
+            .collect::<StdResult<Vec<(String, u64)>>>()
+            .unwrap();
+
+        assert_eq!(
+            vec![
+                // ("native3".to_string(), 10), - out of bound
+                ("native2".to_string(), 20),
+                ("native1".to_string(), 10)
+            ],
+            native_descending
         );
     }
 }
