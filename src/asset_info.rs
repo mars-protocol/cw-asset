@@ -621,7 +621,7 @@ mod test {
 
         assert_eq!(
             vec![
-                // ("native3".to_string(), 10), - out of bound
+                // ("native3".to_string(), 30), - out of bound
                 ("native2".to_string(), 20),
                 ("native1".to_string(), 10)
             ],
