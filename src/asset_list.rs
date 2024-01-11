@@ -33,11 +33,7 @@ impl FromStr for AssetListUnchecked {
             return Ok(Self(vec![]));
         }
 
-        s
-            .split(',')
-            .map(AssetUnchecked::from_str)
-            .collect::<Result<_, _>>()
-            .map(Self)
+        s.split(',').map(AssetUnchecked::from_str).collect::<Result<_, _>>().map(Self)
     }
 }
 
@@ -84,11 +80,7 @@ impl fmt::Display for AssetList {
         let s = if self.is_empty() {
             "[]".to_string()
         } else {
-            self.0
-                .iter()
-                .map(|asset| asset.to_string())
-                .collect::<Vec<_>>()
-                .join(",")
+            self.0.iter().map(|asset| asset.to_string()).collect::<Vec<_>>().join(",")
         };
 
         write!(f, "{s}")
@@ -174,10 +166,8 @@ impl AssetList {
     /// ```rust
     /// use cw_asset::{Asset, AssetList};
     ///
-    /// let list = AssetList::from(vec![
-    ///     Asset::native("uluna", 12345u128),
-    ///     Asset::native("uusd", 67890u128),
-    /// ]);
+    /// let list =
+    ///     AssetList::from(vec![Asset::native("uluna", 12345u128), Asset::native("uusd", 67890u128)]);
     ///
     /// let vec: Vec<Asset> = list.to_vec();
     /// ```
@@ -190,14 +180,11 @@ impl AssetList {
     /// ```rust
     /// use cw_asset::{Asset, AssetList};
     ///
-    /// let list = AssetList::from(vec![
-    ///     Asset::native("uluna", 12345u128),
-    ///     Asset::native("uusd", 67890u128),
-    /// ]);
+    /// let list =
+    ///     AssetList::from(vec![Asset::native("uluna", 12345u128), Asset::native("uusd", 67890u128)]);
     ///
     /// let len = list.len(); // should be two
     /// ```
-    ///
     // NOTE: I do have `is_empty` implemented, but clippy still throws a warnin
     // saying I don't have it. Must be a clippy bug...
     #[allow(clippy::len_without_is_empty)]
@@ -252,10 +239,8 @@ impl AssetList {
     /// ```rust
     /// use cw_asset::{Asset, AssetInfo, AssetList};
     ///
-    /// let mut list = AssetList::from(vec![
-    ///     Asset::native("uluna", 12345u128),
-    ///     Asset::native("uusd", 67890u128),
-    /// ]);
+    /// let mut list =
+    ///     AssetList::from(vec![Asset::native("uluna", 12345u128), Asset::native("uusd", 67890u128)]);
     ///
     /// let list_halved = list.apply(|a| a.amount = a.amount.multiply_ratio(1u128, 2u128));
     /// ```
@@ -269,10 +254,8 @@ impl AssetList {
     /// ```rust
     /// use cw_asset::{Asset, AssetList};
     ///
-    /// let mut list = AssetList::from(vec![
-    ///     Asset::native("uluna", 12345u128),
-    ///     Asset::native("uusd", 0u128),
-    /// ]);
+    /// let mut list =
+    ///     AssetList::from(vec![Asset::native("uluna", 12345u128), Asset::native("uusd", 0u128)]);
     /// let mut len = list.len(); // should be two
     ///
     /// list.purge();
@@ -429,25 +412,17 @@ impl AssetList {
     /// use cosmwasm_std::{Addr, Response};
     /// use cw_asset::{AssetError, AssetList};
     ///
-    /// fn transfer_assets(
-    ///     list: &AssetList,
-    ///     recipient_addr: &Addr,
-    /// ) -> Result<Response, AssetError> {
+    /// fn transfer_assets(list: &AssetList, recipient_addr: &Addr) -> Result<Response, AssetError> {
     ///     let msgs = list.transfer_msgs(recipient_addr)?;
     ///
-    ///     Ok(Response::new()
-    ///         .add_messages(msgs)
-    ///         .add_attribute("assets_sent", list.to_string()))
+    ///     Ok(Response::new().add_messages(msgs).add_attribute("assets_sent", list.to_string()))
     /// }
     /// ```
     pub fn transfer_msgs<A: Into<String> + Clone>(
         &self,
         to: A,
     ) -> Result<Vec<CosmosMsg>, AssetError> {
-        self.0
-            .iter()
-            .map(|asset| asset.transfer_msg(to.clone()))
-            .collect()
+        self.0.iter().map(|asset| asset.transfer_msg(to.clone())).collect()
     }
 }
 
@@ -473,17 +448,14 @@ mod test_helpers {
     }
 
     pub fn mock_list() -> AssetList {
-        AssetList::from(vec![
-            Asset::native("uusd", 69420u128),
-            Asset::new(mock_token(), 88888u128),
-        ])
+        AssetList::from(vec![Asset::native("uusd", 69420u128), Asset::new(mock_token(), 88888u128)])
     }
 }
 
 #[cfg(test)]
 mod tests {
     use cosmwasm_std::{
-        testing::MockApi, to_binary, BankMsg, Coin, CosmosMsg, Decimal, OverflowError,
+        testing::MockApi, to_json_binary, BankMsg, Coin, CosmosMsg, Decimal, OverflowError,
         OverflowOperation, StdError, Uint128, WasmMsg,
     };
     use cw20::Cw20ExecuteMsg;
@@ -691,7 +663,7 @@ mod tests {
                 }),
                 CosmosMsg::Wasm(WasmMsg::Execute {
                     contract_addr: String::from("mock_token"),
-                    msg: to_binary(&Cw20ExecuteMsg::Transfer {
+                    msg: to_json_binary(&Cw20ExecuteMsg::Transfer {
                         recipient: String::from("alice"),
                         amount: Uint128::new(88888)
                     })

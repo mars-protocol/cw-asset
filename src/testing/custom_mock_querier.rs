@@ -1,6 +1,6 @@
 use cosmwasm_std::{
-    from_binary, from_slice, testing::MockQuerier, Addr, Coin, Empty, Querier, QuerierResult,
-    QueryRequest, StdResult, SystemError, WasmQuery,
+    from_json, testing::MockQuerier, Addr, Coin, Empty, Querier, QuerierResult, QueryRequest,
+    StdResult, SystemError, WasmQuery,
 };
 use cw20::Cw20QueryMsg;
 
@@ -22,7 +22,7 @@ impl Default for CustomMockQuerier {
 
 impl Querier for CustomMockQuerier {
     fn raw_query(&self, bin_request: &[u8]) -> QuerierResult {
-        let request: QueryRequest<Empty> = match from_slice(bin_request) {
+        let request: QueryRequest<Empty> = match from_json(bin_request) {
             Ok(v) => v,
             Err(e) => {
                 return Err(SystemError::InvalidRequest {
@@ -45,7 +45,7 @@ impl CustomMockQuerier {
             }) => {
                 let contract_addr = Addr::unchecked(contract_addr);
 
-                let parse_cw20_query: StdResult<Cw20QueryMsg> = from_binary(msg);
+                let parse_cw20_query: StdResult<Cw20QueryMsg> = from_json(msg);
                 if let Ok(cw20_query) = parse_cw20_query {
                     return self.cw20_querier.handle_query(&contract_addr, cw20_query);
                 }

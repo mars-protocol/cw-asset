@@ -1,7 +1,7 @@
 use std::{convert::TryFrom, fmt, str::FromStr};
 
 use cosmwasm_schema::cw_serde;
-use cosmwasm_std::{to_binary, Addr, Api, BankMsg, Binary, Coin, CosmosMsg, Uint128, WasmMsg};
+use cosmwasm_std::{to_json_binary, Addr, Api, BankMsg, Binary, Coin, CosmosMsg, Uint128, WasmMsg};
 use cw20::Cw20ExecuteMsg;
 use cw_address_like::AddressLike;
 
@@ -259,7 +259,7 @@ impl Asset {
     ///     MockCommand {},
     /// }
     ///
-    /// use cosmwasm_std::{to_binary, Addr, Response};
+    /// use cosmwasm_std::{to_json_binary, Addr, Response};
     /// use cw_asset::{Asset, AssetError};
     ///
     /// fn send_asset(
@@ -267,18 +267,16 @@ impl Asset {
     ///     contract_addr: &Addr,
     ///     msg: &MockReceiveMsg,
     /// ) -> Result<Response, AssetError> {
-    ///     let msg = asset.send_msg(contract_addr, to_binary(msg)?)?;
+    ///     let msg = asset.send_msg(contract_addr, to_json_binary(msg)?)?;
     ///
-    ///     Ok(Response::new()
-    ///         .add_message(msg)
-    ///         .add_attribute("asset_sent", asset.to_string()))
+    ///     Ok(Response::new().add_message(msg).add_attribute("asset_sent", asset.to_string()))
     /// }
     /// ```
     pub fn send_msg<A: Into<String>>(&self, to: A, msg: Binary) -> Result<CosmosMsg, AssetError> {
         match &self.info {
             AssetInfo::Cw20(contract_addr) => Ok(CosmosMsg::Wasm(WasmMsg::Execute {
                 contract_addr: contract_addr.into(),
-                msg: to_binary(&Cw20ExecuteMsg::Send {
+                msg: to_json_binary(&Cw20ExecuteMsg::Send {
                     contract: to.into(),
                     amount: self.amount,
                     msg,
@@ -301,9 +299,7 @@ impl Asset {
     /// fn transfer_asset(asset: &Asset, recipient_addr: &Addr) -> Result<Response, AssetError> {
     ///     let msg = asset.transfer_msg(recipient_addr)?;
     ///
-    ///     Ok(Response::new()
-    ///         .add_message(msg)
-    ///         .add_attribute("asset_sent", asset.to_string()))
+    ///     Ok(Response::new().add_message(msg).add_attribute("asset_sent", asset.to_string()))
     /// }
     /// ```
     pub fn transfer_msg<A: Into<String>>(&self, to: A) -> Result<CosmosMsg, AssetError> {
@@ -317,7 +313,7 @@ impl Asset {
             })),
             AssetInfo::Cw20(contract_addr) => Ok(CosmosMsg::Wasm(WasmMsg::Execute {
                 contract_addr: contract_addr.into(),
-                msg: to_binary(&Cw20ExecuteMsg::Transfer {
+                msg: to_json_binary(&Cw20ExecuteMsg::Transfer {
                     recipient: to.into(),
                     amount: self.amount,
                 })?,
@@ -344,9 +340,7 @@ impl Asset {
     /// ) -> Result<Response, AssetError> {
     ///     let msg = asset.transfer_from_msg(user_addr, contract_addr)?;
     ///
-    ///     Ok(Response::new()
-    ///         .add_message(msg)
-    ///         .add_attribute("asset_drawn", asset.to_string()))
+    ///     Ok(Response::new().add_message(msg).add_attribute("asset_drawn", asset.to_string()))
     /// }
     /// ```
     pub fn transfer_from_msg<A: Into<String>, B: Into<String>>(
@@ -357,7 +351,7 @@ impl Asset {
         match &self.info {
             AssetInfo::Cw20(contract_addr) => Ok(CosmosMsg::Wasm(WasmMsg::Execute {
                 contract_addr: contract_addr.into(),
-                msg: to_binary(&Cw20ExecuteMsg::TransferFrom {
+                msg: to_json_binary(&Cw20ExecuteMsg::TransferFrom {
                     owner: from.into(),
                     recipient: to.into(),
                     amount: self.amount,
@@ -601,16 +595,16 @@ mod tests {
         let token = Asset::cw20(Addr::unchecked("mock_token"), 123456u128);
         let coin = Asset::native("uusd", 123456u128);
 
-        let bin_msg = to_binary(&MockExecuteMsg::MockCommand {}).unwrap();
+        let bin_msg = to_json_binary(&MockExecuteMsg::MockCommand {}).unwrap();
         let msg = token.send_msg("mock_contract", bin_msg.clone()).unwrap();
         assert_eq!(
             msg,
             CosmosMsg::Wasm(WasmMsg::Execute {
                 contract_addr: String::from("mock_token"),
-                msg: to_binary(&Cw20ExecuteMsg::Send {
+                msg: to_json_binary(&Cw20ExecuteMsg::Send {
                     contract: String::from("mock_contract"),
                     amount: Uint128::new(123456),
-                    msg: to_binary(&MockExecuteMsg::MockCommand {}).unwrap()
+                    msg: to_json_binary(&MockExecuteMsg::MockCommand {}).unwrap()
                 })
                 .unwrap(),
                 funds: vec![]
@@ -630,7 +624,7 @@ mod tests {
             msg,
             CosmosMsg::Wasm(WasmMsg::Execute {
                 contract_addr: String::from("mock_token"),
-                msg: to_binary(&Cw20ExecuteMsg::Transfer {
+                msg: to_json_binary(&Cw20ExecuteMsg::Transfer {
                     recipient: String::from("alice"),
                     amount: Uint128::new(123456)
                 })
@@ -653,7 +647,7 @@ mod tests {
             msg,
             CosmosMsg::Wasm(WasmMsg::Execute {
                 contract_addr: String::from("mock_token"),
-                msg: to_binary(&Cw20ExecuteMsg::TransferFrom {
+                msg: to_json_binary(&Cw20ExecuteMsg::TransferFrom {
                     owner: String::from("bob"),
                     recipient: String::from("charlie"),
                     amount: Uint128::new(123456)

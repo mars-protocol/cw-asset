@@ -2,7 +2,7 @@ use std::{any::type_name, fmt, str::FromStr};
 
 use cosmwasm_schema::cw_serde;
 use cosmwasm_std::{
-    to_binary, Addr, Api, BalanceResponse, BankQuery, QuerierWrapper, QueryRequest, StdError,
+    to_json_binary, Addr, Api, BalanceResponse, BankQuery, QuerierWrapper, QueryRequest, StdError,
     StdResult, Uint128, WasmQuery,
 };
 use cw20::{BalanceResponse as Cw20BalanceResponse, Cw20QueryMsg};
@@ -204,7 +204,7 @@ impl AssetInfo {
                 let response: Cw20BalanceResponse =
                     querier.query(&QueryRequest::Wasm(WasmQuery::Smart {
                         contract_addr: contract_addr.into(),
-                        msg: to_binary(&Cw20QueryMsg::Balance {
+                        msg: to_json_binary(&Cw20QueryMsg::Balance {
                             address: address.into(),
                         })?,
                     }))?;
