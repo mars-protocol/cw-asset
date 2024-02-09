@@ -1,10 +1,10 @@
 [package]
 name        = "cw-asset"
 description = "Helper library for interacting with Cosmos assets (native coins and CW20 tokens)"
-version     = "3.1.0"
+version     = "3.1.1"
 authors     = ["Larry Engineer <larry@delphidigital.io>"]
 edition     = "2021"
-license     = "GPL-3.0-or-later"
+license     = "Apache-2.0"
 repository  = "https://github.com/mars-protocol/cw-asset"
 
 [dependencies]
