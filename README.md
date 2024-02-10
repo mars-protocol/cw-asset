@@ -9,4 +9,4 @@ A unified representation of various types of Cosmos fungible assets, and helper 
 
 ## License
 
-Contents of this repository are open source under [GNU Public License v3](./LICENSE).
+Contents of this repository are open source under [Apache 2.0](./LICENSE).
