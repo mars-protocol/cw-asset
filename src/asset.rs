@@ -560,8 +560,9 @@ mod tests {
     #[test]
     fn checking() {
         let api = MockApi::default();
+        let token_addr = api.addr_make( "mock_token");
 
-        let checked = Asset::cw20(Addr::unchecked("mock_token"), 12345u128);
+        let checked = Asset::cw20(token_addr, 12345u128);
         let unchecked: AssetUnchecked = checked.clone().into();
         assert_eq!(unchecked.check(&api, None).unwrap(), checked);
 
@@ -582,8 +583,10 @@ mod tests {
     #[test]
     fn checking_uppercase() {
         let api = MockApi::default();
+        let mut token_addr = api.addr_make( "mock_token");
+        token_addr = Addr::unchecked(token_addr.into_string().to_uppercase());
 
-        let unchecked = AssetUnchecked::cw20("TERRA1234ABCD", 12345u128);
+        let unchecked = AssetUnchecked::cw20(token_addr, 12345u128);
         assert_eq!(
             unchecked.check(&api, None).unwrap_err(),
             StdError::generic_err("Invalid input: address not normalized").into(),
@@ -638,7 +641,7 @@ mod tests {
             msg,
             CosmosMsg::Bank(BankMsg::Send {
                 to_address: String::from("alice"),
-                amount: vec![Coin::new(123456, "uusd")]
+                amount: vec![Coin::new(123456u128, "uusd")]
             }),
         );
 

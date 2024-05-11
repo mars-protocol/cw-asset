@@ -5,7 +5,7 @@ use cosmwasm_std::{
     OwnedDeps,
 };
 
-use super::custom_mock_querier::CustomMockQuerier;
+use super::CustomMockQuerier;
 
 pub fn mock_dependencies() -> OwnedDeps<MockStorage, MockApi, CustomMockQuerier> {
     OwnedDeps {

@@ -58,7 +58,7 @@ impl CustomMockQuerier {
     }
 
     pub fn set_base_balances(&mut self, address: &str, balances: &[Coin]) {
-        self.base.update_balance(address, balances.to_vec());
+        self.base.bank.update_balance(address, balances.to_vec());
     }
 
     pub fn set_cw20_balance(&mut self, contract: &str, user: &str, balance: u128) {

@@ -444,7 +444,7 @@ mod test_helpers {
     }
 
     pub fn mock_token() -> AssetInfo {
-        AssetInfo::cw20(Addr::unchecked("mock_token"))
+        AssetInfo::cw20(Addr::unchecked("cosmos1c4k24jzduc365kywrsvf5ujz4ya6mwymy8vq4q"))
     }
 
     pub fn mock_list() -> AssetList {
@@ -495,14 +495,14 @@ mod tests {
             }),
         );
 
-        let s = "native:uusd:69420,cw20:mock_token:88888";
+        let s = "native:uusd:69420,cw20:cosmos1c4k24jzduc365kywrsvf5ujz4ya6mwymy8vq4q:88888";
         assert_eq!(AssetListUnchecked::from_str(s).unwrap(), AssetListUnchecked::from(mock_list()));
     }
 
     #[test]
     fn to_string() {
         let list = mock_list();
-        assert_eq!(list.to_string(), String::from("native:uusd:69420,cw20:mock_token:88888"));
+        assert_eq!(list.to_string(), String::from("native:uusd:69420,cw20:cosmos1c4k24jzduc365kywrsvf5ujz4ya6mwymy8vq4q:88888"));
 
         let list = AssetList::from(vec![] as Vec<Asset>);
         assert_eq!(list.to_string(), String::from("[]"));
@@ -523,13 +523,13 @@ mod tests {
         let strs: Vec<String> = list.into_iter().map(|asset| asset.to_string()).collect();
         assert_eq!(
             strs,
-            vec![String::from("native:uusd:69420"), String::from("cw20:mock_token:88888"),]
+            vec![String::from("native:uusd:69420"), String::from("cw20:cosmos1c4k24jzduc365kywrsvf5ujz4ya6mwymy8vq4q:88888"),]
         );
     }
 
     #[test]
     fn checking() {
-        let api = MockApi::default();
+        let api = MockApi::default().with_prefix("cosmos");
 
         let checked = mock_list();
         let unchecked: AssetListUnchecked = checked.clone().into();
@@ -547,10 +547,12 @@ mod tests {
     #[test]
     fn checking_uppercase() {
         let api = MockApi::default();
+        let mut token_addr = api.addr_make( "mock_token");
+        token_addr = Addr::unchecked(token_addr.into_string().to_uppercase());
 
         let unchecked = AssetListBase(vec![
             AssetUnchecked::native("uusd", 69420u128),
-            AssetUnchecked::cw20("MOCK_TOKEN", 88888u128),
+            AssetUnchecked::cw20(token_addr, 88888u128),
         ]);
 
         assert_eq!(
@@ -574,8 +576,7 @@ mod tests {
     fn applying() {
         let mut list = mock_list();
 
-        let half = Decimal::from_ratio(1u128, 2u128);
-        list.apply(|asset: &mut Asset| asset.amount = asset.amount * half);
+        list.apply(|asset: &mut Asset| asset.amount = asset.amount.multiply_ratio(1u128, 2u128));
         assert_eq!(
             list,
             AssetList::from(vec![
@@ -636,8 +637,6 @@ mod tests {
             err,
             Err(OverflowError::new(
                 OverflowOperation::Sub,
-                Uint128::new(76543),
-                Uint128::new(99999)
             )
             .into()),
         );
@@ -659,10 +658,10 @@ mod tests {
             vec![
                 CosmosMsg::Bank(BankMsg::Send {
                     to_address: String::from("alice"),
-                    amount: vec![Coin::new(69420, "uusd")]
+                    amount: vec![Coin::new(69420u128, "uusd")]
                 }),
                 CosmosMsg::Wasm(WasmMsg::Execute {
-                    contract_addr: String::from("mock_token"),
+                    contract_addr: String::from("cosmos1c4k24jzduc365kywrsvf5ujz4ya6mwymy8vq4q"),
                     msg: to_json_binary(&Cw20ExecuteMsg::Transfer {
                         recipient: String::from("alice"),
                         amount: Uint128::new(88888)
