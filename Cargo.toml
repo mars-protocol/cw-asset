@@ -1,7 +1,7 @@
 [package]
 name        = "cw-asset"
 description = "Helper library for interacting with Cosmos assets (native coins and CW20 tokens)"
-version     = "3.1.1"
+version     = "4.0.0"
 authors     = ["Larry Engineer <larry@delphidigital.io>"]
 edition     = "2021"
 license     = "Apache-2.0"
