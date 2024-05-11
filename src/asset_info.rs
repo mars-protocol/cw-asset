@@ -266,6 +266,9 @@ impl<'a> PrimaryKey<'a> for &AssetInfo {
 }
 
 impl KeyDeserialize for &AssetInfo {
+
+    const KEY_ELEMS: u16 = 1;
+
     type Output = AssetInfo;
 
     #[inline(always)]
@@ -406,7 +409,7 @@ mod test {
     #[test]
     fn querying_balance() {
         let mut deps = mock_dependencies();
-        deps.querier.set_base_balances("alice", &[Coin::new(12345, "uusd")]);
+        deps.querier.set_base_balances("alice", &[Coin::new(12345u128, "uusd")]);
         deps.querier.set_cw20_balance("mock_token", "bob", 67890);
 
         let info1 = AssetInfo::native("uusd");

@@ -8,12 +8,15 @@ license     = "Apache-2.0"
 repository  = "https://github.com/mars-protocol/cw-asset"
 
 [dependencies]
-cosmwasm-schema = "1.5.0"
-cosmwasm-std    = "1.5.0"
-cw20            = "1.1.2"
-cw-address-like = "1.0.4"
-cw-storage-plus = "1.2.0"
-thiserror       = "1.0.56"
+cosmwasm-schema = "2.0"
+cosmwasm-std    = "2.0"
+cw20            = "2.0"
+cw-address-like = "2.0"
+cw-storage-plus = "2.0"
+thiserror       = "1"
 
 [dev-dependencies]
-serde = { version = "1.0.195", default-features = false, features = ["derive"] }
+serde = { version = "1.0", default-features = false, features = ["derive"] }
+
+[patch.crates-io]
+cw-address-like = { git = "https://github.com/CyberHoward/cw-plus-plus", branch = "bump/cosmwasm-2.0" }
