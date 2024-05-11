@@ -455,7 +455,7 @@ mod test_helpers {
 #[cfg(test)]
 mod tests {
     use cosmwasm_std::{
-        testing::MockApi, to_json_binary, BankMsg, Coin, CosmosMsg, Decimal, OverflowError,
+        testing::MockApi, to_json_binary, BankMsg, Coin, CosmosMsg, OverflowError,
         OverflowOperation, StdError, Uint128, WasmMsg,
     };
     use cw20::Cw20ExecuteMsg;
