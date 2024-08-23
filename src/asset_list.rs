@@ -502,7 +502,12 @@ mod tests {
     #[test]
     fn to_string() {
         let list = mock_list();
-        assert_eq!(list.to_string(), String::from("native:uusd:69420,cw20:cosmos1c4k24jzduc365kywrsvf5ujz4ya6mwymy8vq4q:88888"));
+        assert_eq!(
+            list.to_string(),
+            String::from(
+                "native:uusd:69420,cw20:cosmos1c4k24jzduc365kywrsvf5ujz4ya6mwymy8vq4q:88888"
+            )
+        );
 
         let list = AssetList::from(vec![] as Vec<Asset>);
         assert_eq!(list.to_string(), String::from("[]"));
@@ -523,7 +528,10 @@ mod tests {
         let strs: Vec<String> = list.into_iter().map(|asset| asset.to_string()).collect();
         assert_eq!(
             strs,
-            vec![String::from("native:uusd:69420"), String::from("cw20:cosmos1c4k24jzduc365kywrsvf5ujz4ya6mwymy8vq4q:88888"),]
+            vec![
+                String::from("native:uusd:69420"),
+                String::from("cw20:cosmos1c4k24jzduc365kywrsvf5ujz4ya6mwymy8vq4q:88888"),
+            ]
         );
     }
 
@@ -633,13 +641,7 @@ mod tests {
         assert_eq!(asset.amount, Uint128::new(76543));
 
         let err = list.deduct(&Asset::new(mock_token(), 99999u128));
-        assert_eq!(
-            err,
-            Err(OverflowError::new(
-                OverflowOperation::Sub,
-            )
-            .into()),
-        );
+        assert_eq!(err, Err(OverflowError::new(OverflowOperation::Sub,).into()),);
     }
 
     #[test]

@@ -266,7 +266,6 @@ impl<'a> PrimaryKey<'a> for &AssetInfo {
 }
 
 impl KeyDeserialize for &AssetInfo {
-
     const KEY_ELEMS: u16 = 1;
 
     type Output = AssetInfo;
@@ -377,7 +376,7 @@ mod test {
     fn checking() {
         let api = MockApi::default();
         let token_addr = api.addr_make("mock_token");
-        
+
         let checked = AssetInfo::cw20(token_addr);
         let unchecked: AssetInfoUnchecked = checked.clone().into();
         assert_eq!(unchecked.check(&api, None).unwrap(), checked);
