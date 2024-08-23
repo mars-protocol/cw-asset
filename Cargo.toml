@@ -8,12 +8,12 @@ license     = "Apache-2.0"
 repository  = "https://github.com/mars-protocol/cw-asset"
 
 [dependencies]
-cosmwasm-schema = "2.1"
-cosmwasm-std    = "2.1"
-cw20            = "2.0"
+cosmwasm-schema = "2.0.0"
+cosmwasm-std    = "2.0.0"
+cw20            = "2.0.0"
 cw-address-like = "2.0.0"
-cw-storage-plus = "2.0"
-thiserror       = "1"
+cw-storage-plus = "2.0.0"
+thiserror       = "1.0.56"
 
 [dev-dependencies]
 serde = { version = "1.0", default-features = false, features = ["derive"] }
