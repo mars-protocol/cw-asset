@@ -547,7 +547,7 @@ mod tests {
     #[test]
     fn checking_uppercase() {
         let api = MockApi::default();
-        let mut token_addr = api.addr_make( "mock_token");
+        let mut token_addr = api.addr_make("mock_token");
         token_addr = Addr::unchecked(token_addr.into_string().to_uppercase());
 
         let unchecked = AssetListBase(vec![

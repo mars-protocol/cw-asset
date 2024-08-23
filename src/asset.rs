@@ -560,7 +560,7 @@ mod tests {
     #[test]
     fn checking() {
         let api = MockApi::default();
-        let token_addr = api.addr_make( "mock_token");
+        let token_addr = api.addr_make("mock_token");
 
         let checked = Asset::cw20(token_addr, 12345u128);
         let unchecked: AssetUnchecked = checked.clone().into();
@@ -583,7 +583,7 @@ mod tests {
     #[test]
     fn checking_uppercase() {
         let api = MockApi::default();
-        let mut token_addr = api.addr_make( "mock_token");
+        let mut token_addr = api.addr_make("mock_token");
         token_addr = Addr::unchecked(token_addr.into_string().to_uppercase());
 
         let unchecked = AssetUnchecked::cw20(token_addr, 12345u128);
