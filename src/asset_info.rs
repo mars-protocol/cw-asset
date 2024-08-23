@@ -266,6 +266,8 @@ impl<'a> PrimaryKey<'a> for &AssetInfo {
 }
 
 impl KeyDeserialize for &AssetInfo {
+    const KEY_ELEMS: u16 = 1;
+
     type Output = AssetInfo;
 
     #[inline(always)]
@@ -373,8 +375,9 @@ mod test {
     #[test]
     fn checking() {
         let api = MockApi::default();
+        let token_addr = api.addr_make("mock_token");
 
-        let checked = AssetInfo::cw20(Addr::unchecked("mock_token"));
+        let checked = AssetInfo::cw20(token_addr);
         let unchecked: AssetInfoUnchecked = checked.clone().into();
         assert_eq!(unchecked.check(&api, None).unwrap(), checked);
 
@@ -395,8 +398,10 @@ mod test {
     #[test]
     fn checking_uppercase() {
         let api = MockApi::default();
+        let mut token_addr = api.addr_make("mock_token");
+        token_addr = Addr::unchecked(token_addr.into_string().to_uppercase());
 
-        let unchecked = AssetInfoUnchecked::cw20("TERRA1234ABCD");
+        let unchecked = AssetInfoUnchecked::cw20(token_addr);
         assert_eq!(
             unchecked.check(&api, None).unwrap_err(),
             StdError::generic_err("Invalid input: address not normalized").into(),
@@ -406,7 +411,7 @@ mod test {
     #[test]
     fn querying_balance() {
         let mut deps = mock_dependencies();
-        deps.querier.set_base_balances("alice", &[Coin::new(12345, "uusd")]);
+        deps.querier.set_base_balances("alice", &[Coin::new(12345u128, "uusd")]);
         deps.querier.set_cw20_balance("mock_token", "bob", 67890);
 
         let info1 = AssetInfo::native("uusd");
